@@ -1,5 +1,6 @@
 {
     "Registermodules": "Register,Login",
+    "RegisterTCPaddr": "localhost:9158",
 	"Module":{
         "Gate":[
                     {

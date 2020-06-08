@@ -53,6 +53,7 @@ func LoadConfig(Path string) {
 
 type Config struct {
 	Registermodules string
+	RegisterTCPaddr string
 	Log             map[string]interface{}
 	Module          map[string][]*ModuleSettings
 	Settings        map[string]interface{}
