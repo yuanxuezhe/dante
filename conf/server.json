@@ -1,0 +1,39 @@
+{
+    "Registermodules": "Register,Login",
+	"Module":{
+        "Gate":[
+                    {
+                        "Id":"Gate",
+                        "Settings":{
+                            "WSAddr":      	 "localhost:19000",
+                            "TCPAddr":     	 "localhost:9000",
+                            "MaxMsgLen":     4096,
+                            "HTTPTimeout":   10,
+                            "MaxConnNum" :   20000,
+                            "Tls"        :   false,
+                            "CertFile"       :   "/opt/go/mqantserver/sslkey/h5link.pem",
+                            "KeyFile"        :   "/opt/go/mqantserver/sslkey/h5link.key",
+                            "MinHBStorage"  :   60
+                        }
+                    }
+            ],
+        "Register":[
+            {
+                "Id":"Register",
+                "Settings":{
+                    "TCPAddr":     	 "localhost:9158",
+                    "LoseTimeduring": 90
+                }
+            }
+        ],
+        "Login":[
+                    {
+                        "Id":"Login",
+                        "Settings":{
+                            "TCPAddr":     	 "localhost:9100",
+                            "RegistBeatingduring": 30
+                        }
+                    }
+            ]
+        }
+}
