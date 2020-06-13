@@ -17,6 +17,7 @@ package conf
 import (
 	"bufio"
 	"bytes"
+	"dante/core/log"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -40,7 +41,8 @@ func init() {
 		ApplicationDir, _ = filepath.Split(ApplicationPath)
 	}
 
-	defaultConfPath := fmt.Sprintf("/%s/conf/server.json", ApplicationDir)
+	defaultConfPath := fmt.Sprintf("%s\\conf\\server.json", ApplicationDir)
+	log.Release(defaultConfPath)
 	LoadConfig(defaultConfPath)
 }
 
@@ -74,12 +76,12 @@ type Redis struct {
 }
 
 type ModuleSettings struct {
-	Id      string
-	TCPAddr string
+	Id string
+	//TCPAddr string
 	//ProcessID string
 	Settings map[string]interface{}
-	Rabbitmq *Rabbitmq
-	Redis    *Redis
+	//Rabbitmq *Rabbitmq
+	//Redis    *Redis
 }
 
 type SSH struct {

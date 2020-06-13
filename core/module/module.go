@@ -1,17 +1,19 @@
 package module
 
 import (
-	"dante/core/conf"
+	. "dante/core/conf"
 	"dante/core/log"
-	"runtime"
+	"fmt"
 	"sync"
 )
 
 type Module interface {
-	Version() string //模块版本
-	GetType() string //模块类型
+	GetId() string
+	Version() string //module version
+	GetType() string //module type
 	OnInit()
 	OnDestroy()
+	SetPorperty(*ModuleSettings) error
 	Run(closeSig chan bool)
 }
 
@@ -21,15 +23,18 @@ type module struct {
 	wg       sync.WaitGroup
 }
 
+// all module collections
 var mods []*module
-var mpmods map[string]Module
+
+// Create module function map
+var mpmods map[string]func() Module
 
 func init() {
-	mpmods = make(map[string]Module)
+	mpmods = make(map[string]func() Module)
 }
 
-func AddModule(tag string, mi Module) {
-	mpmods[tag] = mi
+func AddModule(tag string, newModule func() Module) {
+	mpmods[tag] = newModule
 }
 
 func Register(mod string) {
@@ -37,11 +42,25 @@ func Register(mod string) {
 		log.Fatal("模块[%s]不存在", mod)
 		return
 	}
-	m := new(module)
-	m.mi = mpmods[mod]
-	m.closeSig = make(chan bool, 1)
+	if Conf.Module[mod] == nil {
+		log.Fatal("模块[%s]配置信息不存在", mod)
+		return
+	}
 
-	mods = append(mods, m)
+	for _, moduleSettings := range Conf.Module[mod] {
+		m := new(module)
+		Model := mpmods[mod]()
+		err := Model.SetPorperty(moduleSettings)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		m.mi = Model
+		m.closeSig = make(chan bool, 1)
+
+		mods = append(mods, m)
+	}
 }
 
 func Init() {
@@ -53,6 +72,8 @@ func Init() {
 		m := mods[i]
 		m.wg.Add(1)
 		go run(m)
+
+		log.Release("%s:%s:%s", m.mi.GetId(), m.mi.GetType(), m.mi.Version())
 	}
 }
 
@@ -71,17 +92,5 @@ func run(m *module) {
 }
 
 func destroy(m *module) {
-	defer func() {
-		if r := recover(); r != nil {
-			if conf.LenStackBuf > 0 {
-				buf := make([]byte, conf.LenStackBuf)
-				l := runtime.Stack(buf, false)
-				log.Error("%v: %s", r, buf[:l])
-			} else {
-				log.Error("%v", r)
-			}
-		}
-	}()
-
 	m.mi.OnDestroy()
 }

@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func AddMod(tag string, mi module.Module) {
-	module.AddModule(tag, mi)
+func AddMod(tag string, newmodule func() module.Module) {
+	module.AddModule(tag, newmodule)
 }
 
 func Run() {
@@ -21,7 +21,6 @@ func Run() {
 	for _, mod := range mods {
 		module.Register(mod)
 	}
-
 	module.Init()
 
 	// close

@@ -1,7 +1,7 @@
 package log_test
 
 import (
-	"leafserver/leaf/log"
+	"dante/core/log"
 	l "log"
 )
 

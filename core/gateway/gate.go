@@ -1,20 +1,23 @@
 package gateway
 
 import (
+	. "dante/core/conf"
 	"dante/core/log"
+	base "dante/core/module/Basemodule"
 	"dante/core/network"
-	"leafserver/leaf/chanrpc"
+	"fmt"
 	"net"
 	"reflect"
 	"time"
 )
 
 type Gate struct {
+	base.Basemodule
 	MaxConnNum      int
 	PendingWriteNum int
 	MaxMsgLen       uint32
 	Processor       network.Processor
-	AgentChanRPC    *chanrpc.Server
+	//AgentChanRPC    *chanrpc.Server
 
 	// websocket
 	WSAddr      string
@@ -23,9 +26,15 @@ type Gate struct {
 	KeyFile     string
 
 	// tcp
-	TCPAddr      string
 	LenMsgLen    int
 	LittleEndian bool
+
+	/////////////
+	//TCPAddr string				// 监听地址
+	//ModuleType string			// 模块类型
+	//ModuleVersion string		// 模块版本号
+	//Registduring float64		// 注册心跳、断开时间间隔
+	//ModuleId string				// 模块名称
 }
 
 func (gate *Gate) Run(closeSig chan bool) {
@@ -39,13 +48,6 @@ func (gate *Gate) Run(closeSig chan bool) {
 		wsServer.HTTPTimeout = gate.HTTPTimeout
 		wsServer.CertFile = gate.CertFile
 		wsServer.KeyFile = gate.KeyFile
-		wsServer.NewAgent = func(conn *network.WSConn) network.Agent {
-			a := &agent{conn: conn, gate: gate}
-			if gate.AgentChanRPC != nil {
-				gate.AgentChanRPC.Go("NewAgent", a)
-			}
-			return a
-		}
 	}
 
 	var tcpServer *network.TCPServer
@@ -58,11 +60,12 @@ func (gate *Gate) Run(closeSig chan bool) {
 		tcpServer.MaxMsgLen = gate.MaxMsgLen
 		tcpServer.LittleEndian = gate.LittleEndian
 		tcpServer.NewAgent = func(conn *network.TCPConn) network.Agent {
-			a := &agent{conn: conn, gate: gate}
-			if gate.AgentChanRPC != nil {
-				gate.AgentChanRPC.Go("NewAgent", a)
+			agent := &agent{
+				conn: conn,
+				gate: gate,
 			}
-			return a
+
+			return agent
 		}
 	}
 
@@ -83,6 +86,32 @@ func (gate *Gate) Run(closeSig chan bool) {
 
 func (gate *Gate) OnDestroy() {}
 
+func (gate *Gate) GetId() string {
+	return gate.ModuleId + "  " + gate.TCPAddr
+}
+
+func (gate *Gate) GetType() string {
+	//Very important, it needs to correspond to the Module configuration in the configuration file
+	return gate.ModuleType
+}
+func (gate *Gate) Version() string {
+	//You can understand the code version during monitoring
+	return gate.ModuleVersion
+}
+
+func (gate *Gate) SetPorperty(moduleSettings *ModuleSettings) (err error) {
+	gate.ModuleId = moduleSettings.Id
+
+	if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
+		gate.TCPAddr = value
+	} else {
+		err = fmt.Errorf("ModuleId:%s 参数[TCPAddr]设置有误", moduleSettings.Id)
+		return
+	}
+
+	return
+}
+
 type agent struct {
 	conn     network.Conn
 	gate     *Gate
@@ -98,28 +127,10 @@ func (a *agent) Run() {
 		}
 
 		log.Release("recive msg: %s", data)
-		//if a.gate.Processor != nil {
-		//	msg, err := a.gate.Processor.Unmarshal(data)
-		//	if err != nil {
-		//		log.Debug("unmarshal message error: %v", err)
-		//		break
-		//	}
-		//	err = a.gate.Processor.Route(msg, a)
-		//	if err != nil {
-		//		log.Debug("route message error: %v", err)
-		//		break
-		//	}
-		//}
 	}
 }
 
 func (a *agent) OnClose() {
-	if a.gate.AgentChanRPC != nil {
-		err := a.gate.AgentChanRPC.Call0("CloseAgent", a)
-		if err != nil {
-			log.Error("chanrpc error: %v", err)
-		}
-	}
 }
 
 func (a *agent) WriteMsg(msg interface{}) {
