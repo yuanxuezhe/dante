@@ -1,9 +1,9 @@
 package gateway
 
 import (
-	"dante/core/gateway"
 	"dante/core/module"
-	basemodule "dante/core/module/Basemodule"
+	basemodule "dante/core/module/base"
+	"dante/core/module/gateway"
 )
 
 var NewModule = func() module.Module {

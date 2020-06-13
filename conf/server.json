@@ -1,6 +1,7 @@
 {
     "Registermodules": "Register,Login,Gateway",
-    "RegisterTCPaddr": "localhost:9101",
+    "RegisterProtocol": "tcp",
+    "RegisterCentor": "localhost:9101",
 	"Module":{
         "Gateway":[
                     {

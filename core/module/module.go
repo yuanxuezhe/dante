@@ -15,6 +15,7 @@ type Module interface {
 	OnDestroy()
 	SetPorperty(*ModuleSettings) error
 	Run(closeSig chan bool)
+	Register(closeSig chan bool)
 }
 
 type module struct {
@@ -37,6 +38,7 @@ func AddModule(tag string, newModule func() Module) {
 	mpmods[tag] = newModule
 }
 
+// 注册模块到系统
 func Register(mod string) {
 	if mpmods[mod] == nil {
 		log.Fatal("模块[%s]不存在", mod)
@@ -63,6 +65,7 @@ func Register(mod string) {
 	}
 }
 
+// 初始化启动模块
 func Init() {
 	for i := 0; i < len(mods); i++ {
 		mods[i].mi.OnInit()
@@ -72,8 +75,18 @@ func Init() {
 		m := mods[i]
 		m.wg.Add(1)
 		go run(m)
+		//log.Release("%s:%s:%s", m.mi.GetId(), m.mi.GetType(), m.mi.Version())
+	}
+}
 
-		log.Release("%s:%s:%s", m.mi.GetId(), m.mi.GetType(), m.mi.Version())
+// 注册模块到注册中心
+func RegisterCentor() {
+	for i := 0; i < len(mods); i++ {
+		m := mods[i]
+		m.wg.Add(1)
+		go registertoCentor(m)
+
+		//log.Release("%s:%s:%s", m.mi.GetId(), m.mi.GetType(), m.mi.Version())
 	}
 }
 
@@ -93,4 +106,9 @@ func run(m *module) {
 
 func destroy(m *module) {
 	m.mi.OnDestroy()
+}
+
+func registertoCentor(m *module) {
+	m.mi.Register(m.closeSig)
+	m.wg.Done()
 }

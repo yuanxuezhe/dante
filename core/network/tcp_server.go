@@ -33,18 +33,19 @@ func (server *TCPServer) Start() {
 
 func (server *TCPServer) init() {
 	ln, err := net.Listen("tcp", server.Addr)
-	log.Release("net.Listen %s", server.Addr)
+	//log.Release("net.Listen %s", server.Addr)
+	//log.Release("|ModuleId: %10s|Version: %10s|Listen: %15s|")
 	if err != nil {
 		log.Fatal("%v", err)
 	}
 
 	if server.MaxConnNum <= 0 {
 		server.MaxConnNum = 100
-		log.Release("invalid MaxConnNum, reset to %v", server.MaxConnNum)
+		//log.Release("invalid MaxConnNum, reset to %v", server.MaxConnNum)
 	}
 	if server.PendingWriteNum <= 0 {
 		server.PendingWriteNum = 100
-		log.Release("invalid PendingWriteNum, reset to %v", server.PendingWriteNum)
+		//log.Release("invalid PendingWriteNum, reset to %v", server.PendingWriteNum)
 	}
 	if server.NewAgent == nil {
 		log.Fatal("NewAgent must not be nil")

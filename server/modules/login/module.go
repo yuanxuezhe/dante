@@ -2,7 +2,7 @@ package login
 
 import (
 	"dante/core/module"
-	base "dante/core/module/Basemodule"
+	base "dante/core/module/base"
 )
 
 var NewModule = func() module.Module {
