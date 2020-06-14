@@ -28,7 +28,7 @@ func (client *WSClient) Start() {
 
 	for i := 0; i < client.ConnNum; i++ {
 		client.wg.Add(1)
-		go client.connect()
+		go client.Connect()
 	}
 }
 
@@ -83,7 +83,7 @@ func (client *WSClient) dial() *websocket.Conn {
 	}
 }
 
-func (client *WSClient) connect() {
+func (client *WSClient) Connect() {
 	defer client.wg.Done()
 
 reconnect:

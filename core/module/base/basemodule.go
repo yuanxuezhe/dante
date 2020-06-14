@@ -4,16 +4,17 @@ import (
 	. "dante/core/conf"
 	"dante/core/log"
 	"dante/core/network"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 )
 
 type Basemodule struct {
+	ModuleId      string // 模块名称
 	ModuleType    string // 模块类型
 	ModuleVersion string // 模块版本号
-	Registduring  int    // 注册心跳、断开时间间隔
-	ModuleId      string // 模块名称
+	registduring  int    // 注册心跳、断开时间间隔
 	TcpAddr       string
 	WsAddr        string
 }
@@ -46,7 +47,7 @@ func (m *Basemodule) Run(closeSig chan bool) {
 		//wsServer.CertFile = gate.CertFile
 		//wsServer.KeyFile = gate.KeyFile
 		wsServer.NewAgent = func(conn *network.WSConn) network.Agent {
-			agent := &agent{conn: conn, mod: m}
+			agent := network.Agent{Conn: conn}
 			//if gate.AgentChanRPC != nil {
 			//	gate.AgentChanRPC.Go("NewAgent", a)
 			//}
@@ -59,11 +60,11 @@ func (m *Basemodule) Run(closeSig chan bool) {
 		tcpServer.Addr = m.TcpAddr
 		//tcpServer.MaxConnNum = gate.MaxConnNum
 		//tcpServer.PendingWriteNum = gate.PendingWriteNum
-		//tcpServer.LenMsgLen = gate.LenMsgLen
-		//tcpServer.MaxMsgLen = gate.MaxMsgLen
-		//tcpServer.LittleEndian = gate.LittleEndian
+		tcpServer.LenMsgLen = 4
+		tcpServer.MaxMsgLen = 1000000
+		tcpServer.LittleEndian = false
 		tcpServer.NewAgent = func(conn *network.TCPConn) network.Agent {
-			agent := &agent{conn: conn, mod: m}
+			agent := network.Agent{Conn: conn}
 			return agent
 		}
 	}
@@ -117,7 +118,7 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	}
 
 	if value, ok := moduleSettings.Settings["Registduring"].(float64); ok {
-		m.Registduring = int(value)
+		m.registduring = int(value)
 	} else {
 		err = fmt.Errorf("ModuleId:%s 参数[RegistBeatingduring]设置有误", moduleSettings.Id)
 		return
@@ -127,45 +128,38 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 }
 
 func (m *Basemodule) Register(closeSig chan bool) {
+	agent := &network.Agent{}
+	//o := new(network.TCPConn)
+	//a.conn = o
 	if strings.ToUpper(Conf.RegisterProtocol) == "TCP" {
 		tcpClient := new(network.TCPClient)
 		tcpClient.Addr = Conf.RegisterCentor
-		tcpClient.ConnectInterval = time.Duration(m.Registduring) * time.Second
-		tcpClient.NewAgent = func(conn *network.TCPConn) network.Agent {
-			agent := &agent{conn: conn, mod: m}
-			return agent
-		}
+		tcpClient.ConnectInterval = time.Duration(m.registduring) * time.Second
+		tcpClient.PendingWriteNum = 100
+		tcpClient.LenMsgLen = 4
+		tcpClient.MinMsgLen = 0
+		tcpClient.MaxMsgLen = 100000
+		tcpClient.LittleEndian = false
+
+		tcpClient.Agent = agent
+
+		tcpClient.Start1()
 	} else if strings.ToUpper(Conf.RegisterProtocol) == "HTTP" {
-		tcpClient := new(network.WSClient)
-		tcpClient.Addr = Conf.RegisterCentor
-		tcpClient.ConnectInterval = time.Duration(m.Registduring) * time.Second
-		tcpClient.NewAgent = func(conn *network.WSConn) network.Agent {
-			agent := &agent{conn: conn, mod: m}
-			return agent
-		}
+		wsClient := new(network.WSClient)
+		wsClient.Addr = Conf.RegisterCentor
+		wsClient.ConnectInterval = time.Duration(m.registduring) * time.Second
+
+		//wsClient.Agent = agent
+		wsClient.Connect()
 	}
 
-	client := &network.Client{
-		Protocol:      Conf.RegisterProtocol,
-		Addr:          Conf.RegisterCentor,
-		During:        time.Duration(m.Registduring) * time.Second,
-		AutoReconnect: true,
-		NewAgent: func(conn *network.Conn) network.Agent {
-			agent := &agent{
-				conn: *conn,
-				mod:  m,
-			}
-
-			return agent
-		},
+	jsons, errs := json.Marshal(m) //转换成JSON返回的是byte[]
+	if errs != nil {
+		fmt.Println(errs.Error())
 	}
 
-	client.Init()
-
-	client.Connect()
-
-	client.Sendmsg("1111123232323")
+	agent.WriteMsg(jsons)
 	<-closeSig
 
-	client.Close()
+	agent.Conn.Close()
 }

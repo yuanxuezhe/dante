@@ -7,14 +7,14 @@
                     {
                         "Id":"Gateway01",
                         "Settings":{
-                            "WSAddr":      	 "localhost:19001",
-                            "TCPAddr":     	 "localhost:9001",
-                            "MaxMsgLen":     4096,
-                            "HTTPTimeout":   10,
-                            "MaxConnNum" :   20000,
-                            "Tls"        :   false,
-                            "CertFile"       :   "/opt/go/mqantserver/sslkey/h5link.pem",
-                            "KeyFile"        :   "/opt/go/mqantserver/sslkey/h5link.key",
+                            "WSAddr":       "localhost:19001",
+                            "TCPAddr":      "localhost:9001",
+                            "MaxMsgLen":    4096,
+                            "HTTPTimeout":  10,
+                            "MaxConnNum" :  20000,
+                            "Tls"        :  false,
+                            "CertFile"      :   "/opt/go/mqantserver/sslkey/h5link.pem",
+                            "KeyFile"       :   "/opt/go/mqantserver/sslkey/h5link.key",
                             "MinHBStorage"  :   60
                         }
                     }
@@ -23,7 +23,7 @@
             {
                 "Id":"Register",
                 "Settings":{
-                    "TCPAddr":     	 "localhost:9101",
+                    "TCPAddr":      "localhost:9101",
                     "Registduring": 90
                 }
             }
@@ -32,21 +32,21 @@
             {
                 "Id":"Login01",
                 "Settings":{
-                    "TCPAddr":     	 "localhost:9201",
+                    "TCPAddr":      "localhost:9201",
                     "Registduring": 30
                 }
             },
             {
                 "Id":"Login02",
                 "Settings":{
-                    "TCPAddr":     	 "localhost:9202",
+                    "TCPAddr":      "localhost:9202",
                     "Registduring": 30
                 }
             },
             {
                 "Id":"Login03",
                 "Settings":{
-                    "TCPAddr":     	 "localhost:9203",
+                    "TCPAddr":      "localhost:9203",
                     "Registduring": 30
                 }
             }

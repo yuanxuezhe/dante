@@ -15,9 +15,10 @@ type TCPClient struct {
 	PendingWriteNum int
 	AutoReconnect   bool
 	NewAgent        func(*TCPConn) Agent
+	Agent           *Agent
 	conns           ConnSet
-	wg              sync.WaitGroup
-	closeFlag       bool
+	//wg              sync.WaitGroup
+	closeFlag bool
 
 	// msg parser
 	LenMsgLen    int
@@ -31,9 +32,16 @@ func (client *TCPClient) Start() {
 	client.init()
 
 	for i := 0; i < client.ConnNum; i++ {
-		client.wg.Add(1)
-		go client.connect()
+		//client.wg.Add(1)
+		go client.Connect()
 	}
+}
+
+func (client *TCPClient) Start1() {
+	client.init()
+
+	//client.wg.Add(1)
+	client.Connect()
 }
 
 func (client *TCPClient) init() {
@@ -48,12 +56,9 @@ func (client *TCPClient) init() {
 		client.ConnectInterval = 3 * time.Second
 		log.Release("invalid ConnectInterval, reset to %v", client.ConnectInterval)
 	}
-	if client.PendingWriteNum <= 0 {
-		client.PendingWriteNum = 100
-		log.Release("invalid PendingWriteNum, reset to %v", client.PendingWriteNum)
-	}
-	if client.NewAgent == nil {
-		log.Fatal("NewAgent must not be nil")
+
+	if client.Agent == nil {
+		log.Fatal("Agent must not be nil")
 	}
 	if client.conns != nil {
 		log.Fatal("client is running")
@@ -82,10 +87,10 @@ func (client *TCPClient) dial() net.Conn {
 	}
 }
 
-func (client *TCPClient) connect() {
-	defer client.wg.Done()
+func (client *TCPClient) Connect() {
+	//defer client.wg.Done()
 
-reconnect:
+	//reconnect:
 	conn := client.dial()
 	if conn == nil {
 		return
@@ -97,24 +102,36 @@ reconnect:
 		conn.Close()
 		return
 	}
-	client.conns[conn] = struct{}{}
-	client.Unlock()
+	//client.conns[conn] = struct{}{}
+	//client.Unlock()
 
 	tcpConn := newTCPConn(conn, client.PendingWriteNum, client.msgParser)
-	agent := client.NewAgent(tcpConn)
-	agent.Run()
+
+	//data := []byte(`{
+	//        "YRequest": {
+	//            "type": "register"
+	//            "modid": "Login"
+	//        }
+	//    }`)
+
+	//agent := client.NewAgent(tcpConn)
+	//agent.Run()
+	client.Agent.Conn = tcpConn
 
 	// cleanup
-	tcpConn.Close()
-	client.Lock()
-	delete(client.conns, conn)
-	client.Unlock()
-	agent.OnClose()
+	//tcpConn.Close()
 
-	if client.AutoReconnect {
-		time.Sleep(client.ConnectInterval)
-		goto reconnect
-	}
+	//client.Agent.Conn.WriteMsg(data)
+
+	//client.Lock()
+	//delete(client.conns, conn)
+	//client.Unlock()
+	//agent.OnClose()
+
+	//if client.AutoReconnect {
+	//	time.Sleep(client.ConnectInterval)
+	//	goto reconnect
+	//}
 }
 
 func (client *TCPClient) Close() {
@@ -126,5 +143,5 @@ func (client *TCPClient) Close() {
 	client.conns = nil
 	client.Unlock()
 
-	client.wg.Wait()
+	//client.wg.Wait()
 }

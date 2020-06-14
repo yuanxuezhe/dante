@@ -59,9 +59,9 @@ func (c *Client) Init() (err error) {
 
 func (c *Client) Connect() (err error) {
 	if strings.ToUpper(c.Protocol) == "TCP" {
-		tcpClient.connect()
+		tcpClient.Connect()
 	} else if strings.ToUpper(c.Protocol) == "HTTP" {
-		wsClient.connect()
+		wsClient.Connect()
 	}
 	return
 }
@@ -76,9 +76,9 @@ func (c *Client) Close() {
 
 func (c *Client) SendMsg() (err error) {
 	if strings.ToUpper(c.Protocol) == "TCP" {
-		tcpClient.connect()
+		tcpClient.Connect()
 	} else if strings.ToUpper(c.Protocol) == "HTTP" {
-		wsClient.connect()
+		wsClient.Connect()
 	}
 	return
 }

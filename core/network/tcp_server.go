@@ -99,9 +99,7 @@ func (server *TCPServer) run() {
 		server.wgConns.Add(1)
 
 		tcpConn := newTCPConn(conn, server.PendingWriteNum, server.msgParser)
-		log.Release("0")
 		agent := server.NewAgent(tcpConn)
-		log.Release("5")
 		go func() {
 			agent.Run()
 
