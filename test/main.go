@@ -165,8 +165,8 @@ func main() {
 
 	//这里连接池中资源大小为8
 	fmt.Println("cp len : ", cp.len())
-	conn1.(net.Conn).Write(Sendmsg("helloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwww"))
-	conn2.(net.Conn).Write(Sendmsg("worldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworld"))
+	conn1.(net.Conn).Write(Sendmsg("helloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwwwhelloqqqqqqqqqqqqqqqqqqqqwwwwwwwwww"))
+	conn2.(net.Conn).Write(Sendmsg("worldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworld"))
 	buf := make([]byte, 1024)
 	n, _ := conn1.(net.Conn).Read(buf)
 	fmt.Println("conn1 read : ", string(buf[:n]))

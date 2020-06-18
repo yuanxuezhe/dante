@@ -106,9 +106,6 @@ func (tcpConn *TCPConn) RemoteAddr() net.Addr {
 
 func (tcpConn *TCPConn) ReadMsg() ([]byte, error) {
 	return tcpConn.msgParser.Read(tcpConn)
-	//var b []byte
-	//tcpConn.Read(b)
-	//return b,nil
 }
 
 func (tcpConn *TCPConn) WriteMsg(args ...[]byte) error {
