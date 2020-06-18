@@ -15,7 +15,8 @@
                             "Tls"        :  false,
                             "CertFile"      :   "/opt/go/mqantserver/sslkey/h5link.pem",
                             "KeyFile"       :   "/opt/go/mqantserver/sslkey/h5link.key",
-                            "MinHBStorage"  :   60
+                            "MinHBStorage"  :   60,
+                            "Register": false
                         }
                     }
             ],
@@ -24,7 +25,8 @@
                 "Id":"Register",
                 "Settings":{
                     "TCPAddr":      "localhost:9101",
-                    "Registduring": 90
+                    "Registduring": 90,
+                    "Register": false
                 }
             }
         ],
@@ -33,21 +35,24 @@
                 "Id":"Login01",
                 "Settings":{
                     "TCPAddr":      "localhost:9201",
-                    "Registduring": 30
+                    "Registduring": 30,
+                    "Register": true
                 }
             },
             {
                 "Id":"Login02",
                 "Settings":{
                     "TCPAddr":      "localhost:9202",
-                    "Registduring": 30
+                    "Registduring": 30,
+                    "Register": true
                 }
             },
             {
                 "Id":"Login03",
                 "Settings":{
                     "TCPAddr":      "localhost:9203",
-                    "Registduring": 30
+                    "Registduring": 30,
+                    "Register": true
                 }
             }
         ]

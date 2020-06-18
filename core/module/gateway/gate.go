@@ -3,7 +3,7 @@ package gateway
 import (
 	. "dante/core/conf"
 	base "dante/core/module/base"
-	"dante/core/network"
+	//"dante/core/network"
 	"fmt"
 	"time"
 )
@@ -13,7 +13,7 @@ type Gate struct {
 	MaxConnNum      int
 	PendingWriteNum int
 	MaxMsgLen       uint32
-	Processor       network.Processor
+	//Processor       network.Processor
 	//AgentChanRPC    *chanrpc.Server
 
 	// websocket

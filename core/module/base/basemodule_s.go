@@ -8,8 +8,16 @@ import (
 	"gitee.com/yuanxuezhe/ynet"
 	network "gitee.com/yuanxuezhe/ynet/tcp"
 	"net"
-	"time"
 )
+
+// 发送注册信息
+type ModuleInfo struct {
+	ModuleId      string // 模块名称
+	ModuleType    string // 模块类型
+	ModuleVersion string // 模块版本号
+	TcpAddr       string
+	Status        int
+}
 
 type Basemodule struct {
 	ModuleId      string // 模块名称
@@ -19,6 +27,7 @@ type Basemodule struct {
 	TcpAddr       string
 	WsAddr        string
 	conn          net.Conn
+	registerflag  bool
 	Handler       func(conn net.Conn) `json:"-"`
 }
 
@@ -85,57 +94,61 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 		return
 	}
 
+	m.registerflag = false
+	// 注册标志存在，并且为true时，才发送注册消息
+	if v, ok := moduleSettings.Settings["Register"].(bool); ok {
+		if v == true {
+			m.registerflag = true
+		}
+	}
+
 	return
 }
 
 func (m *Basemodule) Register(closeSig chan bool) {
-	if m.ModuleType == "Register" || m.ModuleType == "Gateway" {
+	// 注册标志存在，并且为true时，才发送注册消息
+	if !m.registerflag {
 		return
 	}
 
-	conn, err := net.Dial(Conf.RegisterProtocol, Conf.RegisterCentor)
-	if err != nil {
-		log.Error("Module[%-10s|%-10s] register failes", m.GetId(), m.Version())
-		return
+	moduleInfo := &ModuleInfo{
+		ModuleId:      m.ModuleId,
+		ModuleType:    m.ModuleType,
+		ModuleVersion: m.ModuleVersion,
+		TcpAddr:       m.TcpAddr,
+		Status:        0, // 0 表示注册
 	}
-	m.conn = conn
-
-	jsons, errs := json.Marshal(m) //转换成JSON返回的是byte[]
+	jsons, errs := json.Marshal(moduleInfo) //转换成JSON返回的是byte[]
 	if errs != nil {
 		fmt.Println(errs.Error())
 		return
 	}
 
 	for {
+		conn, err := net.Dial(Conf.RegisterProtocol, Conf.RegisterCentor)
+		if err != nil {
+			log.Error("Module[%-10s|%-10s] register failes", m.GetId(), m.Version())
+			continue
+		}
+
 		// 发送注册消息
-		err = network.SendMsg(m.conn, jsons)
+		err = network.SendMsg(conn, jsons)
 		if err != nil {
 			fmt.Printf("Module[%-10s|%-10s] register failes:%s", err)
-			break
+			conn.Close()
+			continue
 		}
 
 		// 接收注册中心应答
 		buff, err := network.ReadMsg(conn.(net.Conn))
 		if err != nil {
 			fmt.Printf("%s", err)
-		}
-		//fmt.Println(conn.(net.Conn).LocalAddr(), "==>", conn.(net.Conn).RemoteAddr(), "    ", string(buff))
-		fmt.Println(m.conn.LocalAddr(), "==>", m.conn.RemoteAddr(), "    ", string(buff))
-
-		time.Sleep(time.Duration(m.registduring) * time.Second)
-	}
-}
-
-func Handler(conn net.Conn) {
-	for {
-		buff, err := network.ReadMsg(conn)
-		if err != nil {
+			conn.Close()
+			continue
+		} else {
+			fmt.Println("首次注册应答  ", conn.LocalAddr(), "==>", conn.RemoteAddr(), "    ", string(buff))
+			conn.Close()
 			break
 		}
-
-		fmt.Println(string(buff))
-		network.SendMsg(conn, []byte("Hello,Recv msg:"+string(buff)))
-
-		time.Sleep(1 * time.Millisecond)
 	}
 }

@@ -26,3 +26,4 @@ gen
 
 # go mod
 vendor
+/core/network.rar
