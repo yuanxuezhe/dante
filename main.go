@@ -6,6 +6,7 @@ import (
 	"dante/server/modules/gateway"
 	"dante/server/modules/login"
 	"dante/server/modules/register"
+	_ "dante/server/util/mysqlpool"
 )
 
 func main() {

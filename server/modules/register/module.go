@@ -24,13 +24,15 @@ type ConnSet map[net.Conn]struct{}
 
 type Register struct {
 	base.Basemodule
-	conns ConnSet
+	conns   ConnSet
+	modules map[string]base.ModuleInfo
 }
 
 //var MapRegister map[string]base.Basemodule
 
 func (m *Register) init() {
 	m.conns = make(ConnSet)
+	m.modules = make(map[string]base.ModuleInfo)
 	//MapRegister = make(map[string]base.Basemodule, 1000)
 }
 
@@ -80,6 +82,9 @@ reconnect:
 
 	conn, err = net.Dial("tcp", moduleInfo.TcpAddr)
 	if err != nil {
+		//if _, ok := m.modules[moduleInfo.ModuleId]; ok {
+		//	delete(m.modules,moduleInfo.ModuleId)
+		//}
 		log.Error("CreateRegisterBeats Module[%-10s|%-10s] register failes: %v  reconnect in 1 s", moduleInfo.ModuleId, moduleInfo.ModuleVersion, err)
 		time.Sleep(1 * time.Second)
 		goto reconnect
@@ -89,46 +94,20 @@ reconnect:
 	//go Write(conn)
 	// 发送注册消息
 resend:
+
 	err = network.SendMsg(conn, msg.PackageMsg("Register", string(jsons)))
 	if err != nil {
+		//if _, ok := m.modules[moduleInfo.ModuleId]; ok {
+		//	delete(m.modules,moduleInfo.ModuleId)
+		//}
 		fmt.Printf("Module[%-10s|%-10s] register sendmsg failes:%s", err)
 		conn.Close()
 		goto reconnect
 	} else {
+		//if _, ok := m.modules[moduleInfo.ModuleId]; !ok {
+		//	m.modules[moduleInfo.ModuleId] = moduleInfo
+		//}
 		time.Sleep(10 * time.Second)
 		goto resend
 	}
-
 }
-
-//
-//func  Read(conn net.Conn) {
-//	reader := bufio.NewReader(c.TCPConn)
-//	for {
-//		lineBytes, err := reader.ReadBytes('\n')
-//		if err != nil {
-//			log.Println("startread read bytes error ", err)
-//			break
-//		}
-//		len:=len(lineBytes)
-//		line:=lineBytes[:len-1]
-//		log.Println("start read from client ",string(line))
-//		go c.HandleMsg(line)
-//	}
-//}
-//func  Write(conn net.Conn) {
-//	log.Println("write groutine is waiting")
-//	defer log.Println("write groutine exit")
-//	for {
-//		select {
-//		case data := <-c.MsgChan:
-//			if _, err := c.TCPConn.Write(data); err != nil {
-//				log.Println("startwrite conn write error ", err)
-//				return
-//			}
-//			log.Println("start write from server ",string(data))
-//		case <-c.ExitChan:
-//			return
-//		}
-//	}
-//}

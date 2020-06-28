@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gitee.com/yuanxuezhe/ynet"
 	network "gitee.com/yuanxuezhe/ynet/tcp"
+	_ "github.com/go-sql-driver/mysql"
 	"net"
 )
 
@@ -29,7 +30,18 @@ type Basemodule struct {
 	conn          net.Conn
 	registerflag  bool
 	Handler       func(conn net.Conn) `json:"-"`
+	//Mysqlpool     *yconnpool.ConnPool
 }
+
+//func (m *Basemodule) init() {
+//	var err error
+//	m.Mysqlpool, err = yconnpool.NewConnPool(func() (yconnpool.ConnRes, error) {
+//		return sql.Open("mysql", "root:1@tcp(192.168.3.25:3306)/dante?parseTime=true")
+//	}, 100, time.Second*100)
+//	if err != nil {
+//		panic(err)
+//	}
+//}
 
 func (m *Basemodule) GetId() string {
 	return m.ModuleId //+ "  " + m.TcpAddr + "  " + m.WsAddr
@@ -67,6 +79,7 @@ func (m *Basemodule) OnDestroy() {
 }
 
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
+	//m.init()
 	m.ModuleId = moduleSettings.Id
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
