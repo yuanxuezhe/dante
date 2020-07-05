@@ -5,10 +5,12 @@ import (
 	base "dante/core/module/base"
 	. "dante/core/msg"
 	"dante/server/tables"
+	"dante/server/util/snogenerator"
 	"encoding/json"
 	"fmt"
 	network "gitee.com/yuanxuezhe/ynet/tcp"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -20,7 +22,6 @@ const (
 
 type Logininfo struct {
 	Type    int    `json:"type"`    // 登录类型 0、注册 1、登录 2、登出
-	Userid  string `json:"userid"`  // 用户名
 	Account string `json:"account"` // 账号 userid/phone num/email
 	Phone   int    `json:"phone"`   // 手机号码
 	Email   string `json:"email"`   // 邮箱
@@ -28,16 +29,18 @@ type Logininfo struct {
 }
 
 var NewModule = func() module.Module {
-	mod := &Login{base.Basemodule{ModuleType: "Login", ModuleVersion: "1.2.4"}}
+	mod := &Login{Basemodule: base.Basemodule{ModuleType: "Login", ModuleVersion: "1.2.4"}}
 	mod.Handler = mod.handler
 	return mod
 }
 
 type Login struct {
 	base.Basemodule
+	rw sync.RWMutex
 }
 
 func (m *Login) handler(conn net.Conn) {
+	//var err error
 	for {
 		buff, err := network.ReadMsg(conn)
 		if err != nil {
@@ -47,6 +50,11 @@ func (m *Login) handler(conn net.Conn) {
 		// 解析收到的消息
 		msg := &Msg{}
 		json.Unmarshal(buff, msg)
+
+		if err != nil {
+			break
+		}
+
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
 			continue
@@ -61,21 +69,59 @@ func (m *Login) handler(conn net.Conn) {
 
 		userinfo := tables.Userinfo{}
 
-		if loginInfo.Type == LOGIN_TYPE_REGISTER {
-			fmt.Println("LOGIN_TYPE_REGISTER")
-
-		} else if loginInfo.Type == LOGIN_TYPE_LOGIN {
-			fmt.Println("LOGIN_TYPE_LOGIN")
-		} else if loginInfo.Type == LOGIN_TYPE_LOGOUT {
-			fmt.Println("LOGIN_TYPE_LOGOUT")
+		userinfo.Phone = loginInfo.Phone
+		userinfo.Email = loginInfo.Email
+		userinfo.Passwd = loginInfo.Passwd
+		//SetParam()
+		// Ckeck params
+		err = m.CheckParams(loginInfo.Type, &userinfo)
+		if err != nil {
+			fmt.Println(err)
+			break
 		}
-
-		userinfo.Userid = "1001"
-		//userinfo.Insert()
+		err = m.ManageUserinfo(loginInfo.Type, &userinfo)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
 		userinfo.QueryByKey()
 		fmt.Println(userinfo)
-		network.SendMsg(conn, []byte("Hello,Recv msg:"+string(buff)))
 
+		network.SendMsg(conn, []byte("Hello,Recv msg:"+string(buff)))
 		time.Sleep(1 * time.Millisecond)
 	}
+}
+
+// Check params
+func (m *Login) CheckParams(Type int, userinfo *tables.Userinfo) error {
+	var err error
+	if Type == LOGIN_TYPE_REGISTER {
+		err = userinfo.CheckAvailable_Phone()
+		if err != nil {
+			return err
+		}
+	} else if Type == LOGIN_TYPE_LOGIN {
+
+	} else if Type == LOGIN_TYPE_LOGOUT {
+
+	}
+	return nil
+}
+
+func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) error {
+	if Type == LOGIN_TYPE_REGISTER {
+		m.rw.Lock()
+		userinfo.Userid = snogenerator.NewUserid()
+		// 用户编号从1111开始
+		if userinfo.Userid < 11111 {
+			userinfo.Userid = 11111
+		}
+		userinfo.Insert()
+		m.rw.Unlock()
+	} else if Type == LOGIN_TYPE_LOGIN {
+
+	} else if Type == LOGIN_TYPE_LOGOUT {
+
+	}
+	return nil
 }

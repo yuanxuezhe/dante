@@ -1,14 +1,16 @@
 package tables
 
 import (
-	. "dante/server/util/mysqlpool"
+	. "dante/server/util/pool"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"runtime"
 )
 
 type Userinfo struct {
-	Userid       string
+	Userid       int
 	Username     string
 	Passwd       string
 	Sex          string
@@ -29,8 +31,17 @@ func (t *Userinfo) QueryByKey() {
 		&t.Status,
 		&t.Registerdate)
 	Mysqlpool.Put(conn)
-	if err != nil {
-		log.Fatal(err)
+	//if err != nil {
+	//	fmt.Println("err5")
+	//	log.Fatal(err)
+	//}
+	switch {
+	case err == sql.ErrNoRows:
+	case err != nil:
+		// 使用该方式可以打印出运行时的错误信息, 该种错误是编译时无法确定的
+		if _, file, line, ok := runtime.Caller(0); ok {
+			fmt.Println(err, file, line)
+		}
 	}
 	return
 }
@@ -39,6 +50,7 @@ func (t *Userinfo) Query() {
 	rs, err := conn.(*sql.DB).Query("SELECT * FROM userinfo ")
 	Mysqlpool.Put(conn)
 	if err != nil {
+		fmt.Println("err4")
 		log.Fatalln(err)
 	}
 	//字段
@@ -109,13 +121,17 @@ func (t *Userinfo) Query() {
 
 func (t *Userinfo) Insert() {
 	conn, _ := Mysqlpool.Get()
-	rs, err := conn.(*sql.DB).Exec("INSERT INTO userinfo(userid,username,passwd,sex,phone,email,status,registerdate) VALUES ('1001', \"wanyuan\", 'ys6303618',\"1\", 18664324256, \"446968454@qq.com\", '0',20200628)")
+	rs, err := conn.(*sql.DB).Exec("INSERT INTO userinfo(userid,username,passwd,sex,phone,email,status,registerdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		t.Userid, t.Username, t.Passwd, t.Sex, t.Phone, t.Email, t.Status, t.Registerdate)
+
 	Mysqlpool.Put(conn)
 	if err != nil {
+		log.Println("err1")
 		log.Fatalln(err)
 	}
 	rowCount, err := rs.RowsAffected()
 	if err != nil {
+		log.Println("err2")
 		log.Fatalln(err)
 	}
 	log.Printf("inserted %d rows", rowCount)
@@ -134,7 +150,30 @@ func (t *Userinfo) CheckUseridExist() bool {
 		&t.Registerdate)
 	Mysqlpool.Put(conn)
 	if err != nil {
+		fmt.Println("err3")
 		log.Fatal(err)
 	}
-	return
+	return true
+}
+
+func (t *Userinfo) CheckAvailable_Phone() error {
+	var err error
+	conn, err := Mysqlpool.Get()
+	if err != nil {
+		return err
+	}
+	rows, err := conn.(*sql.DB).Query("SELECT * FROM userinfo where phone = ?", t.Phone)
+	if err != nil {
+		return err
+	}
+	Mysqlpool.Put(conn)
+
+	if rows.Next() {
+		//if err := rows.Err(); err != nil {
+		//	return err
+		//}
+		return errors.New("phone num has been used!")
+	}
+
+	return nil
 }

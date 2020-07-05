@@ -165,3 +165,5 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		}
 	}
 }
+
+//func (m *Basemodule) RainExecption(err error) {

@@ -1,4 +1,4 @@
-package mysqlpool
+package pool
 
 import (
 	"database/sql"
@@ -10,6 +10,6 @@ var Mysqlpool *yconnpool.ConnPool
 
 func init() {
 	Mysqlpool, _ = yconnpool.NewConnPool(func() (yconnpool.ConnRes, error) {
-		return sql.Open("mysql", "root:1@tcp(192.168.3.25:3306)/dante?parseTime=true")
+		return sql.Open("mysql", "root:1@tcp(192.168.0.2:3306)/dante?parseTime=true")
 	}, 100, time.Second*100)
 }

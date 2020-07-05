@@ -3,7 +3,7 @@ use dante;
 drop table userinfo;
 
 CREATE TABLE IF NOT EXISTS `userinfo`(
-`userid`    VARCHAR(16) NOT NULL,
+`userid`    int NOT NULL,
 `username`  VARCHAR(32) NOT NULL,
 `passwd`    VARCHAR(16) NOT NULL,
 `sex`       char  NOT NULL,
@@ -13,4 +13,3 @@ CREATE TABLE IF NOT EXISTS `userinfo`(
 `registerdate` int default 0,
 PRIMARY KEY ( `userid` )
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
