@@ -40,5 +40,9 @@
                 }
             }
         ]
+    },
+    "Mysql": {
+        "Url": "root:1@tcp(localhost:3306)/dante?parseTime=true",
+        "Maxcount":100
     }
 }

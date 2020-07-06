@@ -60,6 +60,7 @@ type Config struct {
 	Log              map[string]interface{}
 	Module           map[string][]*ModuleSettings
 	Settings         map[string]interface{}
+	Mysql            Mysql
 }
 
 type Rabbitmq struct {
@@ -74,6 +75,11 @@ type Rabbitmq struct {
 type Redis struct {
 	Uri   string //redis://:[password]@[ip]:[port]/[db]
 	Queue string
+}
+
+type Mysql struct {
+	Url      string //redis://:[password]@[ip]:[port]/[db]
+	Maxcount int
 }
 
 type ModuleSettings struct {

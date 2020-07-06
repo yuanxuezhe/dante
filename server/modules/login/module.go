@@ -108,7 +108,7 @@ func (m *Login) CheckParams(Type int, userinfo *tables.Userinfo) error {
 	return nil
 }
 
-func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) error {
+func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) {
 	if Type == LOGIN_TYPE_REGISTER {
 		m.rw.Lock()
 		userinfo.Userid = snogenerator.NewUserid()
@@ -119,7 +119,12 @@ func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) error {
 		userinfo.Insert()
 		m.rw.Unlock()
 	} else if Type == LOGIN_TYPE_LOGIN {
+		userinfo, err = userinfo.CheckAccountExist()
+		if err != nil {
+			return err
+		}
 
+		fmt.Printf("Login successful : %v \n", userinfo)
 	} else if Type == LOGIN_TYPE_LOGOUT {
 
 	}

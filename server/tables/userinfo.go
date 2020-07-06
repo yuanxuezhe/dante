@@ -138,9 +138,13 @@ func (t *Userinfo) Insert() {
 }
 
 // 校验用户是否存在
-func (t *Userinfo) CheckUseridExist() bool {
+func (t *Userinfo) CheckAccountExist() (*Userinfo, error) {
 	conn, _ := Mysqlpool.Get()
-	err := conn.(*sql.DB).QueryRow("SELECT * FROM userinfo where userid = ?", t.Userid).Scan(&t.Userid,
+	err := conn.(*sql.DB).QueryRow("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?",
+		t.Userid,
+		t.Phone,
+		t.Email,
+		t.Passwd).Scan(&t.Userid,
 		&t.Username,
 		&t.Passwd,
 		&t.Sex,
@@ -150,10 +154,9 @@ func (t *Userinfo) CheckUseridExist() bool {
 		&t.Registerdate)
 	Mysqlpool.Put(conn)
 	if err != nil {
-		fmt.Println("err3")
-		log.Fatal(err)
+		return nil, err
 	}
-	return true
+	return t, nil
 }
 
 func (t *Userinfo) CheckAvailable_Phone() error {
@@ -169,9 +172,6 @@ func (t *Userinfo) CheckAvailable_Phone() error {
 	Mysqlpool.Put(conn)
 
 	if rows.Next() {
-		//if err := rows.Err(); err != nil {
-		//	return err
-		//}
 		return errors.New("phone num has been used!")
 	}
 
