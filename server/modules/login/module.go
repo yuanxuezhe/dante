@@ -40,23 +40,32 @@ type Login struct {
 }
 
 func (m *Login) handler(conn net.Conn) {
+	//defer conn.Close()
+
+	defer func() { //必须要先声明defer，否则不能捕获到panic异常
+		if err := recover(); err != nil {
+			fmt.Println(err) //这里的err其实就是panic传入的内容，bug
+			network.SendMsg(conn, m.ResultPackege(1, err.(error).Error()))
+		}
+		conn.Close()
+	}()
 	//var err error
 	for {
 		buff, err := network.ReadMsg(conn)
 		if err != nil {
-			break
+			panic(err)
 		}
-
 		// 解析收到的消息
 		msg := &Msg{}
 		json.Unmarshal(buff, msg)
 
 		if err != nil {
-			break
+			panic(err)
 		}
 
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
+			fmt.Println("注册消息不处理")
 			continue
 		}
 
@@ -64,7 +73,7 @@ func (m *Login) handler(conn net.Conn) {
 		loginInfo := Logininfo{}
 		err = json.Unmarshal(buff, &loginInfo)
 		if err != nil {
-			break
+			panic(err)
 		}
 
 		userinfo := tables.Userinfo{}
@@ -77,17 +86,17 @@ func (m *Login) handler(conn net.Conn) {
 		err = m.CheckParams(loginInfo.Type, &userinfo)
 		if err != nil {
 			fmt.Println(err)
-			break
+			panic(err)
 		}
 		err = m.ManageUserinfo(loginInfo.Type, &userinfo)
 		if err != nil {
 			fmt.Println(err)
-			break
+			panic(err)
 		}
 		userinfo.QueryByKey()
 		fmt.Println(userinfo)
 
-		network.SendMsg(conn, []byte("Hello,Recv msg:"+string(buff)))
+		network.SendMsg(conn, m.ResultPackege(0, userinfo))
 		time.Sleep(1 * time.Millisecond)
 	}
 }

@@ -10,6 +10,7 @@ import (
 var Mysqlpool *yconnpool.ConnPool
 
 func init() {
+	//fmt.Println(conf.Conf.Mysql.Url)
 	Mysqlpool, _ = yconnpool.NewConnPool(func() (yconnpool.ConnRes, error) {
 		return sql.Open("mysql", conf.Conf.Mysql.Url)
 	}, conf.Conf.Mysql.Maxcount, time.Second*100)

@@ -9,6 +9,7 @@ import (
 	network "gitee.com/yuanxuezhe/ynet/tcp"
 	_ "github.com/go-sql-driver/mysql"
 	"net"
+	"reflect"
 )
 
 // 发送注册信息
@@ -31,6 +32,12 @@ type Basemodule struct {
 	registerflag  bool
 	Handler       func(conn net.Conn) `json:"-"`
 	//Mysqlpool     *yconnpool.ConnPool
+}
+
+type Result struct {
+	Status string // 状态
+	Code   int    // 错误码
+	Data   string // 结果
 }
 
 //func (m *Basemodule) init() {
@@ -166,4 +173,24 @@ func (m *Basemodule) Register(closeSig chan bool) {
 	}
 }
 
-//func (m *Basemodule) RainExecption(err error) {
+func (m *Basemodule) ResultPackege(code int, msg interface{}) []byte {
+	result := &Result{}
+	if code == 0 {
+		result.Status = "ok"
+	} else {
+		result.Status = "err"
+	}
+
+	result.Code = code
+
+	if reflect.TypeOf(msg).Kind().String() == "struct" {
+		buff, _ := json.Marshal(msg)
+		result.Data = string(buff)
+	} else {
+		result.Data = msg.(string)
+	}
+
+	buff, _ := json.Marshal(result)
+	//network.SendMsg(conn, buff)
+	return buff
+}
