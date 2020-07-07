@@ -25,7 +25,7 @@ type Basemodule struct {
 	ModuleId      string // 模块名称
 	ModuleType    string // 模块类型
 	ModuleVersion string // 模块版本号
-	registduring  int    // 注册心跳、断开时间间隔
+	Registduring  int    // 注册心跳、断开时间间隔
 	TcpAddr       string
 	WsAddr        string
 	conn          net.Conn
@@ -37,6 +37,7 @@ type Basemodule struct {
 type Result struct {
 	Status string // 状态
 	Code   int    // 错误码
+	Msg    string // 消息
 	Data   string // 结果
 }
 
@@ -67,8 +68,13 @@ func (m *Basemodule) OnInit() {
 }
 
 func (m *Basemodule) Run(closeSig chan bool) {
-	tcpServer := ynet.NewTcpserver(m.TcpAddr, m.Handler)
+	var tcpServer *network.TCPServer
+	//var wsServer *network.TCPServer
+	if len(m.TcpAddr) > 0 {
+		tcpServer = ynet.NewTcpserver(m.TcpAddr, m.Handler)
+	}
 
+	//wsServer := ynet.NewTcpserver(m.TcpAddr, m.Handler)
 	if tcpServer != nil {
 		tcpServer.Start()
 		log.Release("Module[%-10s|%-10s] start successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
@@ -108,7 +114,7 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	}
 
 	if value, ok := moduleSettings.Settings["Registduring"].(float64); ok {
-		m.registduring = int(value)
+		m.Registduring = int(value)
 	} else {
 		err = fmt.Errorf("ModuleId:%s 参数[RegistBeatingduring]设置有误", moduleSettings.Id)
 		return
@@ -173,7 +179,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 	}
 }
 
-func (m *Basemodule) ResultPackege(code int, msg interface{}) []byte {
+func (m *Basemodule) ResultPackege(code int, msg string, data interface{}) []byte {
 	result := &Result{}
 	if code == 0 {
 		result.Status = "ok"
@@ -183,14 +189,23 @@ func (m *Basemodule) ResultPackege(code int, msg interface{}) []byte {
 
 	result.Code = code
 
-	if reflect.TypeOf(msg).Kind().String() == "struct" {
-		buff, _ := json.Marshal(msg)
-		result.Data = string(buff)
-	} else {
-		result.Data = msg.(string)
+	result.Msg = msg
+
+	data_type := reflect.TypeOf(data)
+	if data_type != nil {
+		if data_type.Kind().String() == "struct" {
+			buff, _ := json.Marshal(data)
+			result.Data = string(buff)
+		}
 	}
 
 	buff, _ := json.Marshal(result)
-	//network.SendMsg(conn, buff)
+
+	if result.Status == "ok" {
+		log.Release(string(buff))
+	} else {
+		log.Error(string(buff))
+	}
+
 	return buff
 }

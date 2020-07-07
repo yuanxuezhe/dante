@@ -107,7 +107,7 @@ resend:
 		//if _, ok := m.modules[moduleInfo.ModuleId]; !ok {
 		//	m.modules[moduleInfo.ModuleId] = moduleInfo
 		//}
-		time.Sleep(10 * time.Second)
+		time.Sleep(time.Duration(m.Registduring) * time.Second)
 		goto resend
 	}
 }

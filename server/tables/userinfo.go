@@ -63,33 +63,69 @@ func (t *Userinfo) Insert() {
 	log.Printf("inserted %d rows", rowCount)
 }
 
+//// 校验用户是否存在,若存在返回用户信息
+//func (t *Userinfo) CheckAccountExist() (*Userinfo, error) {
+//	conn, _ := Mysqlpool.Get()
+//	err := conn.(*sql.DB).QueryRow("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?",
+//		t.Userid,
+//		t.Phone,
+//		t.Email,
+//		t.Passwd).Scan(&t.Userid,
+//		&t.Username,
+//		&t.Passwd,
+//		&t.Sex,
+//		&t.Phone,
+//		&t.Email,
+//		&t.Status,
+//		&t.Registerdate)
+//	Mysqlpool.Put(conn)
+//
+//	switch {
+//	case err == sql.ErrNoRows:
+//		return nil, errors.New("Login failed! Userinfo not exists!")
+//	case err != nil:
+//		// 使用该方式可以打印出运行时的错误信息, 该种错误是编译时无法确定的
+//		if _, file, line, ok := runtime.Caller(0); ok {
+//			fmt.Println(err, file, line)
+//		}
+//		return nil, err
+//	}
+//	return t, nil
+//}
+
 // 校验用户是否存在,若存在返回用户信息
 func (t *Userinfo) CheckAccountExist() (*Userinfo, error) {
-	conn, _ := Mysqlpool.Get()
-	err := conn.(*sql.DB).QueryRow("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?",
-		t.Userid,
-		t.Phone,
-		t.Email,
-		t.Passwd).Scan(&t.Userid,
-		&t.Username,
-		&t.Passwd,
-		&t.Sex,
-		&t.Phone,
-		&t.Email,
-		&t.Status,
-		&t.Registerdate)
-	Mysqlpool.Put(conn)
 
-	switch {
-	case err == sql.ErrNoRows:
-		return nil, errors.New("Login failed! Userinfo not exists!")
-	case err != nil:
-		// 使用该方式可以打印出运行时的错误信息, 该种错误是编译时无法确定的
-		if _, file, line, ok := runtime.Caller(0); ok {
-			fmt.Println(err, file, line)
-		}
+	conn, _ := Mysqlpool.Get()
+	stmt, err := conn.(*sql.DB).Prepare("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?")
+	defer stmt.Close()
+	if err != nil {
 		return nil, err
 	}
+	rows, err := stmt.Query(t.Userid, t.Phone, t.Email, t.Passwd)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	Mysqlpool.Put(conn)
+	if rows.Next() {
+		err = rows.Scan(&t.Userid,
+			&t.Username,
+			&t.Passwd,
+			&t.Sex,
+			&t.Phone,
+			&t.Email,
+			&t.Status,
+			&t.Registerdate)
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("Login failed! Userinfo not exists!")
+	}
+
 	return t, nil
 }
 
