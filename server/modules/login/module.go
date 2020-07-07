@@ -7,8 +7,9 @@ import (
 	"dante/server/tables"
 	"dante/server/util/snogenerator"
 	"encoding/json"
+	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	network "gitee.com/yuanxuezhe/ynet/tcp"
-	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,42 +39,43 @@ type Login struct {
 	rw sync.RWMutex
 }
 
-func (m *Login) handler(conn net.Conn) {
+func (m *Login) handler(conn commconn.CommConn) {
 	defer func() { //必须要先声明defer，否则不能捕获到panic异常
 		if err := recover(); err != nil {
 			if err.(error).Error() == "EOF" {
 				return
 			}
+			if strings.Contains(err.(error).Error(), "use of closed network connection") {
+				return
+			}
 			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
 			//log.Error(err.(error).Error())
-			network.SendMsg(conn, m.ResultPackege(1, err.(error).Error(), nil))
+			conn.WriteMsg(m.ResultPackege(1, err.(error).Error(), nil))
 		}
 		conn.Close()
 	}()
 	//var err error
 	for {
-		buff, err := network.ReadMsg(conn)
+		buff, err := conn.(*network.TCPConn).ReadMsg()
 		if err != nil {
 			panic(err)
 		}
 		// 解析收到的消息
 		msg := &Msg{}
 		json.Unmarshal(buff, msg)
-
 		if err != nil {
 			panic(err)
 		}
 
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
-			//fmt.Println("注册消息不处理")
-			network.SendMsg(conn, m.ResultPackege(0, "注册成功！", nil))
+			conn.WriteMsg(m.ResultPackege(0, "注册成功！", nil))
 			continue
 		}
 
 		// 解析获取登录信息
 		loginInfo := Logininfo{}
-		err = json.Unmarshal(buff, &loginInfo)
+		err = json.Unmarshal([]byte(msg.Body), &loginInfo)
 		if err != nil {
 			panic(err)
 		}
@@ -95,7 +97,7 @@ func (m *Login) handler(conn net.Conn) {
 
 		userinfo.QueryByKey()
 
-		network.SendMsg(conn, m.ResultPackege(0, m.SetMsgSucc(loginInfo.Type), userinfo))
+		conn.WriteMsg(m.ResultPackege(0, m.SetMsgSucc(loginInfo.Type), userinfo))
 		time.Sleep(1 * time.Millisecond)
 	}
 }

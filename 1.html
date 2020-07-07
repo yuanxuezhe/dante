@@ -1,8 +1,9 @@
+<!DOCTYPE html>
 <script type="text/javascript">
-var ws = new WebSocket('ws://127.0.0.1:19001')
+var ws = new WebSocket("ws://localhost:19001")
 
 ws.onopen = function() {
-    // 发送 web 消息
-    ws.send(JSON.stringify({"Stus":[{"Name":"yuanshuai","Sex":"1","Age":29},{"Name":"wanyuan","Sex":"0","Age":24}]}))
-}
+     ws.send(JSON.stringify({"id":"Login","body":"{\"type\":1,\"userid\":\"\",\"account\":\"\",\"phone\":18664324256,\"email\":\"4469684514@qq.com\",\"passwd\":\"ys6303999618\"}"}))
+};
 </script>
+</html>K

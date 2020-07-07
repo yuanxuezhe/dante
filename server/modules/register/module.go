@@ -7,7 +7,8 @@ import (
 	"dante/core/msg"
 	"encoding/json"
 	"fmt"
-	network "gitee.com/yuanxuezhe/ynet/tcp"
+	"gitee.com/yuanxuezhe/ynet"
+	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	"net"
 	"time"
 )
@@ -36,15 +37,15 @@ func (m *Register) init() {
 	//MapRegister = make(map[string]base.Basemodule, 1000)
 }
 
-func (m *Register) handler(conn net.Conn) {
+func (m *Register) handler(conn commconn.CommConn) {
 	for {
 		// 接受首次注册消息
-		buff, err := network.ReadMsg(conn)
+		buff, err := conn.ReadMsg()
 		if err != nil {
 			break
 		}
 		// 发送应答
-		network.SendMsg(conn, []byte("Hello,Recv msg:"+string(buff)))
+		conn.WriteMsg([]byte("Hello,Recv msg:" + string(buff)))
 		// 解析消息体
 		moduleInfo := base.ModuleInfo{}
 		errs := json.Unmarshal(buff, &moduleInfo) //转换成JSON返回的是byte[]
@@ -77,10 +78,11 @@ func (m *Register) CreateRegisterBeats(moduleInfo base.ModuleInfo) {
 		return
 	}
 
-	var conn net.Conn
+	var conn commconn.CommConn
 reconnect:
 
-	conn, err = net.Dial("tcp", moduleInfo.TcpAddr)
+	//conn, err = net.Dial("tcp", moduleInfo.TcpAddr)
+	conn = ynet.NewTcpclient(moduleInfo.TcpAddr)
 	if err != nil {
 		//if _, ok := m.modules[moduleInfo.ModuleId]; ok {
 		//	delete(m.modules,moduleInfo.ModuleId)
@@ -95,7 +97,7 @@ reconnect:
 	// 发送注册消息
 resend:
 
-	err = network.SendMsg(conn, msg.PackageMsg("Register", string(jsons)))
+	err = conn.WriteMsg(msg.PackageMsg("Register", string(jsons)))
 	if err != nil {
 		//if _, ok := m.modules[moduleInfo.ModuleId]; ok {
 		//	delete(m.modules,moduleInfo.ModuleId)

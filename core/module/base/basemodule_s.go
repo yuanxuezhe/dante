@@ -6,7 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"gitee.com/yuanxuezhe/ynet"
-	network "gitee.com/yuanxuezhe/ynet/tcp"
+	commconn "gitee.com/yuanxuezhe/ynet/Conn"
+	web "gitee.com/yuanxuezhe/ynet/http"
+	tcp "gitee.com/yuanxuezhe/ynet/tcp"
+
+	//network "gitee.com/yuanxuezhe/ynet/tcp"
 	_ "github.com/go-sql-driver/mysql"
 	"net"
 	"reflect"
@@ -30,7 +34,7 @@ type Basemodule struct {
 	WsAddr        string
 	conn          net.Conn
 	registerflag  bool
-	Handler       func(conn net.Conn) `json:"-"`
+	Handler       func(conn commconn.CommConn) `json:"-"`
 	//Mysqlpool     *yconnpool.ConnPool
 }
 
@@ -68,22 +72,34 @@ func (m *Basemodule) OnInit() {
 }
 
 func (m *Basemodule) Run(closeSig chan bool) {
-	var tcpServer *network.TCPServer
-	//var wsServer *network.TCPServer
+	var tcpServer *tcp.TCPServer
+	var wsServer *web.WSServer
 	if len(m.TcpAddr) > 0 {
 		tcpServer = ynet.NewTcpserver(m.TcpAddr, m.Handler)
+	}
+	if len(m.WsAddr) > 0 {
+		wsServer = ynet.NewWsserver(m.WsAddr, m.Handler)
 	}
 
 	//wsServer := ynet.NewTcpserver(m.TcpAddr, m.Handler)
 	if tcpServer != nil {
 		tcpServer.Start()
-		log.Release("Module[%-10s|%-10s] start successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
+		log.Release("Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
+	}
+
+	if wsServer != nil {
+		wsServer.Start()
+		log.Release("Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
 	}
 
 	<-closeSig
 
 	if tcpServer != nil {
 		tcpServer.Close()
+	}
+
+	if wsServer != nil {
+		wsServer.Close()
 	}
 }
 
@@ -144,21 +160,22 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		TcpAddr:       m.TcpAddr,
 		Status:        0, // 0 表示注册
 	}
-	jsons, errs := json.Marshal(moduleInfo) //转换成JSON返回的是byte[]
-	if errs != nil {
-		fmt.Println(errs.Error())
+	jsons, err := json.Marshal(moduleInfo) //转换成JSON返回的是byte[]
+	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 
 	for {
-		conn, err := net.Dial(Conf.RegisterProtocol, Conf.RegisterCentor)
-		if err != nil {
-			log.Error("Module[%-10s|%-10s] register failes", m.GetId(), m.Version())
-			continue
-		}
+		//conn, err := net.Dial(Conf.RegisterProtocol, Conf.RegisterCentor)
+		conn := ynet.NewTcpclient(Conf.RegisterCentor)
+		//if err != nil {
+		//	log.Error("Module[%-10s|%-10s] register failes", m.GetId(), m.Version())
+		//	continue
+		//}
 
 		// 发送注册消息
-		err = network.SendMsg(conn, jsons)
+		err = conn.WriteMsg(jsons)
 		if err != nil {
 			fmt.Printf("Module[%-10s|%-10s] register failes:%s", err)
 			conn.Close()
@@ -166,7 +183,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		}
 
 		// 接收注册中心应答
-		buff, err := network.ReadMsg(conn.(net.Conn))
+		buff, err := conn.ReadMsg()
 		if err != nil {
 			fmt.Printf("%s", err)
 			conn.Close()

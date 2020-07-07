@@ -7,9 +7,8 @@ import (
 	. "dante/core/msg"
 	"encoding/json"
 	"fmt"
-	network "gitee.com/yuanxuezhe/ynet/tcp"
-
-	"net"
+	"gitee.com/yuanxuezhe/ynet"
+	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	"time"
 )
 
@@ -24,56 +23,61 @@ type Gateway struct {
 	gateway.Gate
 }
 
-func Handler(conn net.Conn) {
+func Handler(conn commconn.CommConn) {
 	var Addr string
-	var dconn net.Conn
+	var dconn commconn.CommConn
 	var ok bool
 	var err error
 	var buff []byte
 	for {
-		buff, err = network.ReadMsg(conn)
+		buff, err = conn.ReadMsg()
 		if err != nil {
 			break
 		}
-
+		fmt.Println(string(buff))
 		msg := &Msg{}
 		err = json.Unmarshal(buff, msg)
 		if err != nil {
-			network.SendMsg(conn, []byte("错误的数据包格式"))
+			conn.WriteMsg([]byte("错误的数据包格式"))
 			//panic("错误的数据包格式")
 			continue
 		}
+		fmt.Println(msg)
 		if msg.Id == "Login" {
-			//fmt.Println("Recv msg: login : ", msg.Body)
 			Addr, ok = getIP()
 			if !ok {
 				continue
 			}
-			dconn, err = net.Dial("tcp", Addr)
-			if err != nil {
-				fmt.Printf("连接%v失败:%v\n", Addr, err)
-				return
-			}
+			dconn = ynet.NewTcpclient(Addr)
 		} else {
-			network.SendMsg(conn, []byte("错误的接口"))
-			//panic("错误的接口")
+			conn.WriteMsg([]byte("错误的接口"))
 			continue
 		}
 
-		CallModule(conn, dconn, msg.Body)
+		CallModule(conn, dconn, buff)
 
 		time.Sleep(1 * time.Millisecond)
 	}
 }
 
-func CallModule(conn, dconn net.Conn, body string) {
+func CallModule(conn, dconn commconn.CommConn, body []byte) {
 	defer dconn.Close()
-	network.SendMsg(dconn, []byte(body))
 
-	buff, _ := network.ReadMsg(dconn)
-	err := network.SendMsg(conn, buff)
+	err := dconn.WriteMsg(body)
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err)
+		return
+	}
+	buff, err := dconn.ReadMsg()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = conn.WriteMsg(buff)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 }
 
