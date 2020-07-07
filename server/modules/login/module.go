@@ -7,7 +7,6 @@ import (
 	"dante/server/tables"
 	"dante/server/util/snogenerator"
 	"encoding/json"
-	"fmt"
 	network "gitee.com/yuanxuezhe/ynet/tcp"
 	"net"
 	"sync"
@@ -40,12 +39,14 @@ type Login struct {
 }
 
 func (m *Login) handler(conn net.Conn) {
-	//defer conn.Close()
-
 	defer func() { //必须要先声明defer，否则不能捕获到panic异常
 		if err := recover(); err != nil {
-			fmt.Println(err) //这里的err其实就是panic传入的内容，bug
-			network.SendMsg(conn, m.ResultPackege(1, err.(error).Error()))
+			if err.(error).Error() == "EOF" {
+				return
+			}
+			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
+			//log.Error(err.(error).Error())
+			network.SendMsg(conn, m.ResultPackege(1, err.(error).Error(), nil))
 		}
 		conn.Close()
 	}()
@@ -65,7 +66,8 @@ func (m *Login) handler(conn net.Conn) {
 
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
-			fmt.Println("注册消息不处理")
+			//fmt.Println("注册消息不处理")
+			network.SendMsg(conn, m.ResultPackege(0, "注册成功！", nil))
 			continue
 		}
 
@@ -81,22 +83,19 @@ func (m *Login) handler(conn net.Conn) {
 		userinfo.Phone = loginInfo.Phone
 		userinfo.Email = loginInfo.Email
 		userinfo.Passwd = loginInfo.Passwd
-		//SetParam()
-		// Ckeck params
+
 		err = m.CheckParams(loginInfo.Type, &userinfo)
 		if err != nil {
-			fmt.Println(err)
 			panic(err)
 		}
 		err = m.ManageUserinfo(loginInfo.Type, &userinfo)
 		if err != nil {
-			fmt.Println(err)
 			panic(err)
 		}
-		userinfo.QueryByKey()
-		fmt.Println(userinfo)
 
-		network.SendMsg(conn, m.ResultPackege(0, userinfo))
+		userinfo.QueryByKey()
+
+		network.SendMsg(conn, m.ResultPackege(0, m.SetMsgSucc(loginInfo.Type), userinfo))
 		time.Sleep(1 * time.Millisecond)
 	}
 }
@@ -132,10 +131,20 @@ func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) 
 		if err != nil {
 			return err
 		}
-
-		fmt.Printf("Login successful : %v \n", userinfo)
 	} else if Type == LOGIN_TYPE_LOGOUT {
 
 	}
 	return nil
+}
+
+// Type 操作类型
+func (m *Login) SetMsgSucc(Type int) (msg string) {
+	if Type == LOGIN_TYPE_REGISTER {
+		msg = " Register successful!"
+	} else if Type == LOGIN_TYPE_LOGIN {
+		msg = " Login successful!"
+	} else if Type == LOGIN_TYPE_LOGOUT {
+		msg = " Logout successful!"
+	}
+	return
 }
