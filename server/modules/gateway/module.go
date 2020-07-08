@@ -6,16 +6,19 @@ import (
 	"dante/core/module/gateway"
 	. "dante/core/msg"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
+	"strings"
 	"time"
 )
 
 var NewModule = func() module.Module {
 	mod := &Gateway{
-		gateway.Gate{Basemodule: basemodule.Basemodule{ModuleType: "Gateway", ModuleVersion: "1.3.3", Handler: Handler}},
+		gateway.Gate{Basemodule: basemodule.Basemodule{ModuleType: "Gateway", ModuleVersion: "1.3.3"}},
 	}
+	mod.Basemodule.Handler = mod.Handler
 	return mod
 }
 
@@ -23,12 +26,27 @@ type Gateway struct {
 	gateway.Gate
 }
 
-func Handler(conn commconn.CommConn) {
+func (g *Gateway) Handler(conn commconn.CommConn) {
 	var Addr string
 	var dconn commconn.CommConn
-	var ok bool
 	var err error
 	var buff []byte
+
+	defer func() { //必须要先声明defer，否则不能捕获到panic异常
+		if err := recover(); err != nil {
+			if err.(error).Error() == "EOF" {
+				return
+			}
+			if strings.Contains(err.(error).Error(), "use of closed network connection") {
+				return
+			}
+			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
+			//log.Error(err.(error).Error())
+			conn.WriteMsg(g.ResultPackege(1, err.(error).Error(), nil))
+		}
+		conn.Close()
+	}()
+
 	for {
 		buff, err = conn.ReadMsg()
 		if err != nil {
@@ -38,21 +56,16 @@ func Handler(conn commconn.CommConn) {
 		msg := &Msg{}
 		err = json.Unmarshal(buff, msg)
 		if err != nil {
-			conn.WriteMsg([]byte("错误的数据包格式"))
-			//panic("错误的数据包格式")
-			continue
+			panic(errors.New("网关数据包格式有误：" + err.Error()))
 		}
 		fmt.Println(msg)
-		if msg.Id == "Login" {
-			Addr, ok = getIP()
-			if !ok {
-				continue
-			}
-			dconn = ynet.NewTcpclient(Addr)
-		} else {
-			conn.WriteMsg([]byte("错误的接口"))
-			continue
+
+		Addr, err = getIP(msg.Id)
+		if err != nil {
+			panic(err)
 		}
+
+		dconn = ynet.NewTcpclient(Addr)
 
 		CallModule(conn, dconn, buff)
 
@@ -81,7 +94,7 @@ func CallModule(conn, dconn commconn.CommConn, body []byte) {
 	}
 }
 
-func getIP() (string, bool) {
+func getIP(moduletype string) (ip string, err error) {
 	//lock.Lock()
 	//defer lock.Unlock()
 	//if len(trueList) < 1 {
@@ -89,6 +102,11 @@ func getIP() (string, bool) {
 	//}
 	//ip := trueList[0]
 	//trueList = append(trueList[1:], ip)
-	ip := "localhost:9201"
-	return ip, true
+	if moduletype == "Login" {
+		ip = "localhost:9201"
+	} else {
+		return "", errors.New("未定义的模块类型[" + moduletype + "]")
+	}
+
+	return ip, nil
 }

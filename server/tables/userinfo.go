@@ -94,7 +94,7 @@ func (t *Userinfo) Insert() {
 //}
 
 // 校验用户是否存在,若存在返回用户信息
-func (t *Userinfo) CheckAccountExist() (*Userinfo, error) {
+func (t *Userinfo) CheckAccountExist() (userinfo *Userinfo, err error) {
 
 	conn, _ := Mysqlpool.Get()
 	stmt, err := conn.(*sql.DB).Prepare("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?")
@@ -109,6 +109,7 @@ func (t *Userinfo) CheckAccountExist() (*Userinfo, error) {
 	}
 
 	Mysqlpool.Put(conn)
+
 	if rows.Next() {
 		err = rows.Scan(&t.Userid,
 			&t.Username,
@@ -123,7 +124,7 @@ func (t *Userinfo) CheckAccountExist() (*Userinfo, error) {
 			return nil, err
 		}
 	} else {
-		return nil, errors.New("Login failed! Userinfo not exists!")
+		return nil, errors.New("Login failed! Userinfo not exists or passwd is wrong!")
 	}
 
 	return t, nil
