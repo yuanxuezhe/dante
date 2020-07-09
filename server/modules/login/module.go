@@ -50,7 +50,7 @@ func (m *Login) handler(conn commconn.CommConn) {
 			}
 			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
 			//log.Error(err.(error).Error())
-			conn.WriteMsg(m.ResultPackege(1, err.(error).Error(), nil))
+			conn.WriteMsg(m.ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
 		}
 		conn.Close()
 	}()
@@ -69,7 +69,7 @@ func (m *Login) handler(conn commconn.CommConn) {
 
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
-			conn.WriteMsg(m.ResultPackege(0, "注册成功！", nil))
+			conn.WriteMsg(m.ResultPackege("Register", 0, "注册成功！", nil))
 			continue
 		}
 
@@ -97,7 +97,7 @@ func (m *Login) handler(conn commconn.CommConn) {
 
 		userinfo.QueryByKey()
 
-		conn.WriteMsg(m.ResultPackege(0, m.SetMsgSucc(loginInfo.Type), userinfo))
+		conn.WriteMsg(m.ResultPackege(m.ModuleType, 0, m.SetMsgSucc(loginInfo.Type), userinfo))
 		time.Sleep(1 * time.Millisecond)
 	}
 }

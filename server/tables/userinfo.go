@@ -10,14 +10,14 @@ import (
 )
 
 type Userinfo struct {
-	Userid       int
-	Username     string
-	Passwd       string
-	Sex          string
-	Phone        int
-	Email        string
-	Status       string
-	Registerdate int
+	Userid       int    `json:"userid"`
+	Username     string `json:"username"`
+	Passwd       string `json:"passwd"`
+	Sex          string `json:"sex"`
+	Phone        int    `json:"phone"`
+	Email        string `json:"email"`
+	Status       string `json:"status"`
+	Registerdate int    `json:"registerdate"`
 }
 
 func (t *Userinfo) QueryByKey() {

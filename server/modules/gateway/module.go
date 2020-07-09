@@ -31,7 +31,7 @@ func (g *Gateway) Handler(conn commconn.CommConn) {
 	var dconn commconn.CommConn
 	var err error
 	var buff []byte
-
+	module := "Error"
 	defer func() { //必须要先声明defer，否则不能捕获到panic异常
 		if err := recover(); err != nil {
 			if err.(error).Error() == "EOF" {
@@ -42,7 +42,7 @@ func (g *Gateway) Handler(conn commconn.CommConn) {
 			}
 			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
 			//log.Error(err.(error).Error())
-			conn.WriteMsg(g.ResultPackege(1, err.(error).Error(), nil))
+			conn.WriteMsg(g.ResultPackege(module, 1, err.(error).Error(), nil))
 		}
 		conn.Close()
 	}()
@@ -56,11 +56,16 @@ func (g *Gateway) Handler(conn commconn.CommConn) {
 		msg := &Msg{}
 		err = json.Unmarshal(buff, msg)
 		if err != nil {
-			panic(errors.New("网关数据包格式有误：" + err.Error()))
+			panic(errors.New("Error data format：" + err.Error()))
 		}
 		fmt.Println(msg)
 
-		Addr, err = getIP(msg.Id)
+		module = msg.Id
+		if module == "Heart" {
+			conn.WriteMsg(g.ResultPackege(module, 0, "Heart beats!", nil))
+		}
+
+		Addr, err = getIP(module)
 		if err != nil {
 			panic(err)
 		}
@@ -105,7 +110,7 @@ func getIP(moduletype string) (ip string, err error) {
 	if moduletype == "Login" {
 		ip = "localhost:9201"
 	} else {
-		return "", errors.New("未定义的模块类型[" + moduletype + "]")
+		return "", errors.New("Undefined moudle:[" + moduletype + "]")
 	}
 
 	return ip, nil

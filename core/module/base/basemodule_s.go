@@ -39,10 +39,11 @@ type Basemodule struct {
 }
 
 type Result struct {
-	Status string // 状态
-	Code   int    // 错误码
-	Msg    string // 消息
-	Data   string // 结果
+	Module string `json:"module"` // 模块类型
+	Status string `json:"status"` // 状态
+	Code   int    `json:"code"`   // 错误码
+	Msg    string `json:"msg"`    // 消息
+	Data   string `json:"data"`   // 结果
 }
 
 //func (m *Basemodule) init() {
@@ -196,13 +197,15 @@ func (m *Basemodule) Register(closeSig chan bool) {
 	}
 }
 
-func (m *Basemodule) ResultPackege(code int, msg string, data interface{}) []byte {
+func (m *Basemodule) ResultPackege(module string, code int, msg string, data interface{}) []byte {
 	result := &Result{}
 	if code == 0 {
 		result.Status = "ok"
 	} else {
 		result.Status = "err"
 	}
+
+	result.Module = module
 
 	result.Code = code
 
