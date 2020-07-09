@@ -63,6 +63,7 @@ func (g *Gateway) Handler(conn commconn.CommConn) {
 		module = msg.Id
 		if module == "Heart" {
 			conn.WriteMsg(g.ResultPackege(module, 0, "Heart beats!", nil))
+			continue
 		}
 
 		Addr, err = getIP(module)

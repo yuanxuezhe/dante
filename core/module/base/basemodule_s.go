@@ -9,6 +9,7 @@ import (
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
+	"time"
 
 	//network "gitee.com/yuanxuezhe/ynet/tcp"
 	_ "github.com/go-sql-driver/mysql"
@@ -76,10 +77,21 @@ func (m *Basemodule) Run(closeSig chan bool) {
 	var tcpServer *tcp.TCPServer
 	var wsServer *web.WSServer
 	if len(m.TcpAddr) > 0 {
-		tcpServer = ynet.NewTcpserver(m.TcpAddr, m.Handler)
+		tcpServer = &tcp.TCPServer{
+			Addr:            m.TcpAddr,
+			MaxConnNum:      100,
+			PendingWriteNum: 1000,
+			Callback:        m.Handler,
+		}
 	}
 	if len(m.WsAddr) > 0 {
-		wsServer = ynet.NewWsserver(m.WsAddr, m.Handler)
+		wsServer = &web.WSServer{
+			Addr:            m.WsAddr,
+			MaxConnNum:      100,
+			PendingWriteNum: 1000,
+			HTTPTimeout:     60 * time.Second,
+			Callback:        m.Handler,
+		}
 	}
 
 	//wsServer := ynet.NewTcpserver(m.TcpAddr, m.Handler)
