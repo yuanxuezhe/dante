@@ -7,6 +7,7 @@ import (
 	"dante/server/tables"
 	"dante/server/util/snogenerator"
 	"encoding/json"
+	"fmt"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	network "gitee.com/yuanxuezhe/ynet/tcp"
 	"strings"
@@ -95,7 +96,10 @@ func (m *Login) handler(conn commconn.CommConn) {
 			panic(err)
 		}
 
-		userinfo.QueryByKey()
+		err = userinfo.QueryByKey()
+		if err != nil {
+			panic(err)
+		}
 
 		conn.WriteMsg(m.ResultPackege(m.ModuleType, 0, m.SetMsgSucc(loginInfo.Type), userinfo))
 		time.Sleep(1 * time.Millisecond)
@@ -126,11 +130,12 @@ func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) 
 		if userinfo.Userid < 11111 {
 			userinfo.Userid = 11111
 		}
-		userinfo.Insert()
+		err = userinfo.Insert()
 		m.rw.Unlock()
 	} else if Type == LOGIN_TYPE_LOGIN {
 		userinfo, err = userinfo.CheckAccountExist()
 		if err != nil {
+			fmt.Println(err)
 			return err
 		}
 	} else if Type == LOGIN_TYPE_LOGOUT {

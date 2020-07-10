@@ -89,7 +89,7 @@ func (m *Basemodule) Run(closeSig chan bool) {
 			Addr:            m.WsAddr,
 			MaxConnNum:      100,
 			PendingWriteNum: 1000,
-			HTTPTimeout:     60 * time.Second,
+			HTTPTimeout:     5 * time.Second,
 			Callback:        m.Handler,
 		}
 	}

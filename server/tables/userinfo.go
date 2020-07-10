@@ -20,9 +20,12 @@ type Userinfo struct {
 	Registerdate int    `json:"registerdate"`
 }
 
-func (t *Userinfo) QueryByKey() {
-	conn, _ := Mysqlpool.Get()
-	err := conn.(*sql.DB).QueryRow("SELECT * FROM userinfo where userid = ?", t.Userid).Scan(&t.Userid,
+func (t *Userinfo) QueryByKey() error {
+	conn, err := Mysqlpool.Get()
+	if err != nil {
+		return err
+	}
+	err = conn.(*sql.DB).QueryRow("SELECT * FROM userinfo where userid = ?", t.Userid).Scan(&t.Userid,
 		&t.Username,
 		&t.Passwd,
 		&t.Sex,
@@ -31,10 +34,9 @@ func (t *Userinfo) QueryByKey() {
 		&t.Status,
 		&t.Registerdate)
 	Mysqlpool.Put(conn)
-	//if err != nil {
-	//	fmt.Println("err5")
-	//	log.Fatal(err)
-	//}
+	if err != nil {
+		return errors.New("Get record from mysql failed!")
+	}
 	switch {
 	case err == sql.ErrNoRows:
 	case err != nil:
@@ -43,24 +45,26 @@ func (t *Userinfo) QueryByKey() {
 			fmt.Println(err, file, line)
 		}
 	}
-	return
+	return nil
 }
-func (t *Userinfo) Insert() {
-	conn, _ := Mysqlpool.Get()
+func (t *Userinfo) Insert() error {
+	conn, err := Mysqlpool.Get()
+	if err != nil {
+		return err
+	}
 	rs, err := conn.(*sql.DB).Exec("INSERT INTO userinfo(userid,username,passwd,sex,phone,email,status,registerdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		t.Userid, t.Username, t.Passwd, t.Sex, t.Phone, t.Email, t.Status, t.Registerdate)
 
 	Mysqlpool.Put(conn)
 	if err != nil {
-		log.Println("err1")
-		log.Fatalln(err)
+		return err
 	}
 	rowCount, err := rs.RowsAffected()
 	if err != nil {
-		log.Println("err2")
-		log.Fatalln(err)
+		return err
 	}
 	log.Printf("inserted %d rows", rowCount)
+	return nil
 }
 
 //// 校验用户是否存在,若存在返回用户信息
@@ -95,13 +99,15 @@ func (t *Userinfo) Insert() {
 
 // 校验用户是否存在,若存在返回用户信息
 func (t *Userinfo) CheckAccountExist() (userinfo *Userinfo, err error) {
-
-	conn, _ := Mysqlpool.Get()
-	stmt, err := conn.(*sql.DB).Prepare("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?")
-	defer stmt.Close()
+	conn, err := Mysqlpool.Get()
 	if err != nil {
 		return nil, err
 	}
+	stmt, err := conn.(*sql.DB).Prepare("SELECT * FROM userinfo where (userid = ? or phone = ? or email = ?) and passwd = ?")
+	if err != nil {
+		return nil, errors.New("Connection to mysql failed!")
+	}
+	defer stmt.Close()
 	rows, err := stmt.Query(t.Userid, t.Phone, t.Email, t.Passwd)
 	defer rows.Close()
 	if err != nil {
