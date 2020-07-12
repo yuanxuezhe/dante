@@ -3,18 +3,19 @@ package base
 import (
 	. "dante/core/conf"
 	"dante/core/log"
+	"dante/core/msg"
 	"encoding/json"
 	"fmt"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
+	"strings"
 	"time"
 
 	//network "gitee.com/yuanxuezhe/ynet/tcp"
 	_ "github.com/go-sql-driver/mysql"
 	"net"
-	"reflect"
 )
 
 // 发送注册信息
@@ -35,7 +36,7 @@ type Basemodule struct {
 	WsAddr        string
 	conn          net.Conn
 	registerflag  bool
-	Handler       func(conn commconn.CommConn) `json:"-"`
+	DoWork        func([]byte) ([]byte, error) `json:"-"`
 	//Mysqlpool     *yconnpool.ConnPool
 }
 
@@ -173,6 +174,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		TcpAddr:       m.TcpAddr,
 		Status:        0, // 0 表示注册
 	}
+
 	jsons, err := json.Marshal(moduleInfo) //转换成JSON返回的是byte[]
 	if err != nil {
 		fmt.Println(err.Error())
@@ -180,12 +182,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 	}
 
 	for {
-		//conn, err := net.Dial(Conf.RegisterProtocol, Conf.RegisterCentor)
 		conn := ynet.NewTcpclient(Conf.RegisterCentor)
-		//if err != nil {
-		//	log.Error("Module[%-10s|%-10s] register failes", m.GetId(), m.Version())
-		//	continue
-		//}
 
 		// 发送注册消息
 		err = conn.WriteMsg(jsons)
@@ -209,7 +206,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 	}
 }
 
-func (m *Basemodule) ResultPackege(module string, code int, msg string, data interface{}) []byte {
+func (m *Basemodule) ResultPackege(moduleType string, code int, msg string, data interface{}) []byte {
 	result := &Result{}
 	if code == 0 {
 		result.Status = "ok"
@@ -217,27 +214,75 @@ func (m *Basemodule) ResultPackege(module string, code int, msg string, data int
 		result.Status = "err"
 	}
 
-	result.Module = module
+	result.Module = moduleType
 
 	result.Code = code
 
 	result.Msg = msg
 
-	data_type := reflect.TypeOf(data)
-	if data_type != nil {
-		if data_type.Kind().String() == "struct" {
-			buff, _ := json.Marshal(data)
-			result.Data = string(buff)
-		}
-	}
+	//data_type := reflect.TypeOf(data)
+	//if data_type != nil {
+	//	if data_type.Kind().String() == "struct" {
+	//		buff, _ := json.Marshal(data)
+	//		result.Data = string(buff)
+	//	}
+	//}
 
-	buff, _ := json.Marshal(result)
+	buff, _ := json.Marshal(data)
+	result.Data = string(buff)
+
+	resbuff, _ := json.Marshal(result)
 
 	if result.Status == "ok" {
-		log.Release(string(buff))
+		log.Release("[%10s]%s", moduleType, string(resbuff))
 	} else {
-		log.Error(string(buff))
+		log.Error("[%10s]%s", moduleType, string(resbuff))
 	}
 
-	return buff
+	return resbuff
+}
+
+func (m *Basemodule) Handler(conn commconn.CommConn) {
+	defer func() { //必须要先声明defer，否则不能捕获到panic异常
+		if err := recover(); err != nil {
+			if err.(error).Error() == "EOF" {
+				return
+			}
+			if strings.Contains(err.(error).Error(), "use of closed network connection") {
+				return
+			}
+			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
+			//log.Error(err.(error).Error())
+			conn.WriteMsg(m.ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+		}
+		conn.Close()
+	}()
+	//var err error
+	for {
+		buff, err := conn.ReadMsg()
+		if err != nil {
+			panic(err)
+		}
+		// 解析收到的消息
+		msg := msg.Msg{}
+		json.Unmarshal(buff, &msg)
+		if err != nil {
+			panic(err)
+		}
+
+		// 若为注册消息，直接忽略
+		if msg.Id == "Register" {
+			conn.WriteMsg(m.ResultPackege("Register", 0, "注册成功！", nil))
+			continue
+		}
+		var data []byte
+		data, err = m.DoWork(buff)
+		if err != nil {
+			panic(err)
+		} else {
+			conn.WriteMsg(data)
+		}
+
+		time.Sleep(1 * time.Millisecond)
+	}
 }

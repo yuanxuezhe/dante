@@ -17,7 +17,7 @@ var NewModule = func() module.Module {
 	mod := &Register{}
 	mod.ModuleType = "Register"
 	mod.ModuleVersion = "1.0.0"
-	mod.Handler = mod.handler
+	mod.Basemodule.DoWork = mod.DoWork
 	return mod
 }
 
@@ -37,33 +37,18 @@ func (m *Register) init() {
 	//MapRegister = make(map[string]base.Basemodule, 1000)
 }
 
-func (m *Register) handler(conn commconn.CommConn) {
-	for {
-		// 接受首次注册消息
-		buff, err := conn.ReadMsg()
-		if err != nil {
-			break
-		}
-		// 发送应答
-		conn.WriteMsg([]byte("Hello,Recv msg:" + string(buff)))
-		// 解析消息体
-		moduleInfo := base.ModuleInfo{}
-		errs := json.Unmarshal(buff, &moduleInfo) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-			return
-		}
-
-		// 创建注册连接
-		go m.CreateRegisterBeats(moduleInfo)
-		//if _, ok := MapRegister[m.ModuleId]; !ok {
-		//	MapRegister[m.ModuleId] = m
-		//}
-
-		//fmt.Println(MapRegister)
-
-		time.Sleep(1 * time.Millisecond)
+func (m *Register) DoWork(buff []byte) ([]byte, error) {
+	var err error
+	// 解析消息体
+	moduleInfo := base.ModuleInfo{}
+	err = json.Unmarshal(buff, &moduleInfo) //转换成JSON返回的是byte[]
+	if err != nil {
+		return nil, err
 	}
+
+	// 创建注册连接
+	go m.CreateRegisterBeats(moduleInfo)
+	return []byte("Register successful:" + string(buff)), nil
 }
 
 func (m *Register) CreateRegisterBeats(moduleInfo base.ModuleInfo) {

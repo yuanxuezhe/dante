@@ -154,3 +154,22 @@ func (t *Userinfo) CheckAvailable_Phone() error {
 
 	return nil
 }
+
+func (t *Userinfo) CheckAvailable_Email() error {
+	var err error
+	conn, err := Mysqlpool.Get()
+	if err != nil {
+		return err
+	}
+	rows, err := conn.(*sql.DB).Query("SELECT * FROM userinfo where email = ?", t.Email)
+	if err != nil {
+		return err
+	}
+	Mysqlpool.Put(conn)
+
+	if rows.Next() {
+		return errors.New("phone num has been used!")
+	}
+
+	return nil
+}

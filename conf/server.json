@@ -1,5 +1,5 @@
 {
-    "Registermodules": "Register,Login,Gateway",
+    "Registermodules": "Register,Login,Gateway,Goods",
     "RegisterProtocol": "tcp",
     "RegisterCentor": "localhost:9101",
 	"Module":{
@@ -7,8 +7,8 @@
                     {
                         "Id":"Gateway01",
                         "Settings":{
-                            "WSAddr":       "192.168.120.37:19001",
-                            "TCPAddr":      "192.168.120.37:9001",
+                            "WSAddr":       "192.168.0.3:19001",
+                            "TCPAddr":      "192.168.0.3:9001",
                             "MaxMsgLen":    4096,
                             "HTTPTimeout":  10,
                             "MaxConnNum" :  20000,
@@ -25,7 +25,7 @@
                 "Id":"Register",
                 "Settings":{
                     "TCPAddr":      "localhost:9101",
-                    "Registduring": 90,
+                    "Registduring": 600,
                     "Register": false
                 }
             }
@@ -39,10 +39,20 @@
                     "Register": true
                 }
             }
+        ],
+        "Goods":[
+            {
+                "Id":"Goods01",
+                "Settings":{
+                    "TCPAddr":      "localhost:9301",
+                    "Registduring": 30,
+                    "Register": true
+                }
+            }
         ]
     },
     "Mysql": {
-        "Url": "root:1@tcp(192.168.120.37:3306)/dante?parseTime=true",
+        "Url": "root:1@tcp(192.168.0.2:3306)/dante?parseTime=true",
         "Maxcount":10
     }
 }

@@ -3,16 +3,11 @@ package login
 import (
 	"dante/core/module"
 	base "dante/core/module/base"
-	. "dante/core/msg"
 	"dante/server/tables"
 	"dante/server/util/snogenerator"
 	"encoding/json"
-	"fmt"
-	commconn "gitee.com/yuanxuezhe/ynet/Conn"
-	network "gitee.com/yuanxuezhe/ynet/tcp"
-	"strings"
+	"errors"
 	"sync"
-	"time"
 )
 
 const (
@@ -22,107 +17,88 @@ const (
 )
 
 type Logininfo struct {
-	Type    int    `json:"type"`    // 登录类型 0、注册 1、登录 2、登出
-	Account string `json:"account"` // 账号 userid/phone num/email
-	Phone   int    `json:"phone"`   // 手机号码
-	Email   string `json:"email"`   // 邮箱
-	Passwd  string `json:"passwd"`  // 密码
+	Type    int    `json:"type"` // 登录类型 0、注册 1、登录 2、登出
+	Account string `json:"account"`
+	Userid  int    `json:"userid"` // userid
+	Phone   int    `json:"phone"`  // phone
+	Email   string `json:"email"`  // email
+	Passwd  string `json:"passwd"` // 密码
 }
 
 var NewModule = func() module.Module {
-	mod := &Login{Basemodule: base.Basemodule{ModuleType: "Login", ModuleVersion: "1.2.4"}}
-	mod.Handler = mod.handler
+	mod := &LoginManage{Basemodule: base.Basemodule{ModuleType: "Login", ModuleVersion: "1.2.4"}}
+	mod.Basemodule.DoWork = mod.DoWork
 	return mod
 }
 
-type Login struct {
+type LoginManage struct {
 	base.Basemodule
 	rw sync.RWMutex
 }
 
-func (m *Login) handler(conn commconn.CommConn) {
-	defer func() { //必须要先声明defer，否则不能捕获到panic异常
-		if err := recover(); err != nil {
-			if err.(error).Error() == "EOF" {
-				return
-			}
-			if strings.Contains(err.(error).Error(), "use of closed network connection") {
-				return
-			}
-			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
-			//log.Error(err.(error).Error())
-			conn.WriteMsg(m.ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
-		}
-		conn.Close()
-	}()
-	//var err error
-	for {
-		buff, err := conn.(*network.TCPConn).ReadMsg()
-		if err != nil {
-			panic(err)
-		}
-		// 解析收到的消息
-		msg := &Msg{}
-		json.Unmarshal(buff, msg)
-		if err != nil {
-			panic(err)
-		}
-
-		// 若为注册消息，直接忽略
-		if msg.Id == "Register" {
-			conn.WriteMsg(m.ResultPackege("Register", 0, "注册成功！", nil))
-			continue
-		}
-
-		// 解析获取登录信息
-		loginInfo := Logininfo{}
-		err = json.Unmarshal([]byte(msg.Body), &loginInfo)
-		if err != nil {
-			panic(err)
-		}
-
-		userinfo := tables.Userinfo{}
-
-		userinfo.Phone = loginInfo.Phone
-		userinfo.Email = loginInfo.Email
-		userinfo.Passwd = loginInfo.Passwd
-
-		err = m.CheckParams(loginInfo.Type, &userinfo)
-		if err != nil {
-			panic(err)
-		}
-		err = m.ManageUserinfo(loginInfo.Type, &userinfo)
-		if err != nil {
-			panic(err)
-		}
-
-		err = userinfo.QueryByKey()
-		if err != nil {
-			panic(err)
-		}
-
-		conn.WriteMsg(m.ResultPackege(m.ModuleType, 0, m.SetMsgSucc(loginInfo.Type), userinfo))
-		time.Sleep(1 * time.Millisecond)
+func (m *LoginManage) DoWork(buff []byte) ([]byte, error) {
+	// 解析获取登录信息
+	var err error
+	// 解析收到的消息
+	loginInfo := Logininfo{}
+	err = json.Unmarshal(buff, &loginInfo)
+	if err != nil {
+		panic(err)
 	}
+
+	userinfo := tables.Userinfo{}
+	userinfo.Userid = loginInfo.Userid
+	userinfo.Phone = loginInfo.Phone
+	userinfo.Email = loginInfo.Email
+	userinfo.Passwd = loginInfo.Passwd
+
+	err = m.CheckParams(loginInfo.Type, &userinfo)
+	if err != nil {
+		return nil, err
+	}
+	err = m.ManageUserinfo(loginInfo.Type, &userinfo)
+	if err != nil {
+		return nil, err
+	}
+
+	err = userinfo.QueryByKey()
+	if err != nil {
+		return nil, err
+	}
+
+	return m.ResultPackege(m.ModuleType, 0, m.SetMsgSucc(loginInfo.Type), userinfo), nil
 }
 
 // Check params
-func (m *Login) CheckParams(Type int, userinfo *tables.Userinfo) error {
+func (m *LoginManage) CheckParams(Type int, userinfo *tables.Userinfo) error {
 	var err error
 	if Type == LOGIN_TYPE_REGISTER {
 		err = userinfo.CheckAvailable_Phone()
 		if err != nil {
 			return err
 		}
-	} else if Type == LOGIN_TYPE_LOGIN {
 
+		if userinfo.Passwd == "" {
+			return errors.New("Passwd cannot be null!")
+		}
+		//err = userinfo.CheckAvailable_Email()
+		//if err != nil {
+		//	return err
+		//}
+	} else if Type == LOGIN_TYPE_LOGIN {
+		if userinfo.Userid == 0 && userinfo.Phone == 0 && userinfo.Email == "" {
+			return errors.New("Account cannot be null!")
+		}
+		if userinfo.Passwd == "" {
+			return errors.New("Passwd cannot be null!")
+		}
 	} else if Type == LOGIN_TYPE_LOGOUT {
 
 	}
 	return nil
 }
 
-func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) {
+func (m *LoginManage) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) {
 	if Type == LOGIN_TYPE_REGISTER {
 		m.rw.Lock()
 		userinfo.Userid = snogenerator.NewUserid()
@@ -135,7 +111,6 @@ func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) 
 	} else if Type == LOGIN_TYPE_LOGIN {
 		userinfo, err = userinfo.CheckAccountExist()
 		if err != nil {
-			fmt.Println(err)
 			return err
 		}
 	} else if Type == LOGIN_TYPE_LOGOUT {
@@ -145,7 +120,7 @@ func (m *Login) ManageUserinfo(Type int, userinfo *tables.Userinfo) (err error) 
 }
 
 // Type 操作类型
-func (m *Login) SetMsgSucc(Type int) (msg string) {
+func (m *LoginManage) SetMsgSucc(Type int) (msg string) {
 	if Type == LOGIN_TYPE_REGISTER {
 		msg = " Register successful!"
 	} else if Type == LOGIN_TYPE_LOGIN {
