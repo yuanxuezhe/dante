@@ -1,7 +1,7 @@
 {
     "Registermodules": "Register,Login,Gateway,Goods",
     "RegisterProtocol": "tcp",
-    "RegisterCentor": "localhost:9101",
+    "RegisterCentor": "192.168.0.3:9101",
 	"Module":{
         "Gateway":[
                     {
@@ -24,7 +24,7 @@
             {
                 "Id":"Register",
                 "Settings":{
-                    "TCPAddr":      "localhost:9101",
+                    "TCPAddr":      "192.168.0.3:9101",
                     "Registduring": 600,
                     "Register": false
                 }
@@ -34,7 +34,7 @@
             {
                 "Id":"Login01",
                 "Settings":{
-                    "TCPAddr":      "localhost:9201",
+                    "TCPAddr":      "192.168.0.3:9201",
                     "Registduring": 30,
                     "Register": true
                 }
@@ -44,7 +44,7 @@
             {
                 "Id":"Goods01",
                 "Settings":{
-                    "TCPAddr":      "localhost:9301",
+                    "TCPAddr":      "192.168.0.3:9301",
                     "Registduring": 30,
                     "Register": true
                 }
