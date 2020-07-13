@@ -69,9 +69,9 @@ func CallModule(dconn commconn.CommConn, body []byte) ([]byte, error) {
 
 func getIP(moduletype string) (ip string, err error) {
 	if moduletype == "Login" {
-		ip = "localhost:9201"
+		ip = "192.168.0.3:9201"
 	} else if moduletype == "Goods" {
-		ip = "localhost:9301"
+		ip = "192.168.0.3:9301"
 	} else {
 		return "", errors.New("Undefined moudle:[" + moduletype + "]")
 	}
