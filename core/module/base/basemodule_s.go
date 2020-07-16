@@ -123,15 +123,10 @@ func (m *Basemodule) OnDestroy() {
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	//m.init()
 	m.ModuleId = moduleSettings.Id
-	if m.ModuleType == "Gateway" {
-		m.ConnMang = true
-		m.ReadChan = make(chan []byte, 1000000)
-		m.WriteChan = make(chan []byte, 1000000)
-	} else {
-		m.ConnMang = false
-		m.ReadChan = make(chan []byte, 10000)
-		m.WriteChan = make(chan []byte, 10000)
-	}
+
+	m.ConnMang = false
+	m.ReadChan = make(chan []byte, 10000)
+	m.WriteChan = make(chan []byte, 10000)
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -234,7 +229,6 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 
 	//var err error
 	for {
-		fmt.Println("before0")
 		buff, err := conn.ReadMsg()
 		if err != nil {
 			panic(err)
@@ -252,30 +246,17 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			continue
 		}
 
-		fmt.Println("before", string(buff))
+		fmt.Println("chan:", m.ModuleType, string(buff))
 		m.ReadChan <- buff
-		fmt.Println("end", string(buff))
 	}
 }
 
 func (m *Basemodule) DealReadChan() {
-	//time.Sleep(10 * time.Second)
-	//for b := range m.ReadChan {
-	//	fmt.Println(111)
-	//	m.DoWork(b)
-	//}
-
-	fmt.Println("startttttttttttttttt")
 	for {
 		select {
 		case ri := <-m.ReadChan:
-			fmt.Println("ri", string(ri))
+			fmt.Println("ri", m.ModuleType, string(ri))
 			m.DoWork(ri)
 		}
 	}
-
-	//for {
-	//	fmt.Println("chan",string(<-m.ReadChan))
-	//}
-
 }

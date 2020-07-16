@@ -29,6 +29,10 @@ type Gate struct {
 func (m *Gate) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	m.ModuleId = moduleSettings.Id
 
+	m.ConnMang = true
+	m.ReadChan = make(chan []byte, 1000000)
+	m.WriteChan = make(chan []byte, 1000000)
+
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
 			m.TcpAddr = value
