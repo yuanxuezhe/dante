@@ -2,16 +2,11 @@ package goods
 
 import (
 	"dante/core/module"
-	base "dante/core/module/base"
+	"dante/core/module/base"
+	. "dante/core/msg"
 	"dante/server/tables"
 	"encoding/json"
 	"sync"
-)
-
-const (
-	LOGIN_TYPE_REGISTER = 0
-	LOGIN_TYPE_LOGIN    = 1
-	LOGIN_TYPE_LOGOUT   = 2
 )
 
 type GoodsInfo struct {
@@ -51,5 +46,5 @@ func (m *GoodsManage) DoWork(buff []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.ResultPackege(m.ModuleType, 0, "Get goodsinfo successful!", data), nil
+	return ResultPackege(m.ModuleType, 0, "Get goodsinfo successful!", data), nil
 }

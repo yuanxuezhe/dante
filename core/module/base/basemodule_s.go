@@ -3,7 +3,7 @@ package base
 import (
 	. "dante/core/conf"
 	"dante/core/log"
-	"dante/core/msg"
+	. "dante/core/msg"
 	"encoding/json"
 	"fmt"
 	"gitee.com/yuanxuezhe/ynet"
@@ -15,7 +15,6 @@ import (
 
 	//network "gitee.com/yuanxuezhe/ynet/tcp"
 	_ "github.com/go-sql-driver/mysql"
-	"net"
 )
 
 // 发送注册信息
@@ -34,68 +33,65 @@ type Basemodule struct {
 	Registduring  int    // 注册心跳、断开时间间隔
 	TcpAddr       string
 	WsAddr        string
-	conn          net.Conn
-	registerflag  bool
-	DoWork        func([]byte) ([]byte, error) `json:"-"`
-	//Mysqlpool     *yconnpool.ConnPool
+	//conn          net.Conn
+	registerflag bool
+	DoWork       func([]byte) ([]byte, error) `json:"-"`
+	ConnMang     bool
+	Conns        map[commconn.CommConn]string
+	ReadChan     chan []byte
+	WriteChan    chan []byte
 }
 
-type Result struct {
-	Module string `json:"module"` // 模块类型
-	Status string `json:"status"` // 状态
-	Code   int    `json:"code"`   // 错误码
-	Msg    string `json:"msg"`    // 消息
-	Data   string `json:"data"`   // 结果
-}
-
-//func (m *Basemodule) init() {
-//	var err error
-//	m.Mysqlpool, err = yconnpool.NewConnPool(func() (yconnpool.ConnRes, error) {
-//		return sql.Open("mysql", "root:1@tcp(192.168.3.25:3306)/dante?parseTime=true")
-//	}, 100, time.Second*100)
-//	if err != nil {
-//		panic(err)
-//	}
-//}
-
+// 取模块ID
 func (m *Basemodule) GetId() string {
 	return m.ModuleId //+ "  " + m.TcpAddr + "  " + m.WsAddr
 }
 
+// 取模块类型
 func (m *Basemodule) GetType() string {
 	//Very important, it needs to correspond to the Module configuration in the configuration file
 	return m.ModuleType
 }
+
+// 取模块版本
 func (m *Basemodule) Version() string {
 	//You can understand the code version during monitoring
 	return m.ModuleVersion
 }
+
+// 模块初始化
 func (m *Basemodule) OnInit() {
 
 }
 
+// 运行模块
 func (m *Basemodule) Run(closeSig chan bool) {
 	var tcpServer *tcp.TCPServer
 	var wsServer *web.WSServer
+
+	// tcp
 	if len(m.TcpAddr) > 0 {
 		tcpServer = &tcp.TCPServer{
-			Addr:            m.TcpAddr,
-			MaxConnNum:      100,
+			Addr: m.TcpAddr,
+			//MaxConnNum:      100,
 			PendingWriteNum: 1000,
 			Callback:        m.Handler,
 		}
 	}
+
+	// web
 	if len(m.WsAddr) > 0 {
 		wsServer = &web.WSServer{
-			Addr:            m.WsAddr,
-			MaxConnNum:      100,
+			Addr: m.WsAddr,
+			//MaxConnNum:      100,
 			PendingWriteNum: 1000,
 			HTTPTimeout:     5 * time.Second,
 			Callback:        m.Handler,
 		}
 	}
 
-	//wsServer := ynet.NewTcpserver(m.TcpAddr, m.Handler)
+	go m.DealReadChan()
+
 	if tcpServer != nil {
 		tcpServer.Start()
 		log.Release("Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
@@ -106,6 +102,7 @@ func (m *Basemodule) Run(closeSig chan bool) {
 		log.Release("Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
 	}
 
+	// 关闭系统
 	<-closeSig
 
 	if tcpServer != nil {
@@ -117,13 +114,24 @@ func (m *Basemodule) Run(closeSig chan bool) {
 	}
 }
 
+// 关闭
 func (m *Basemodule) OnDestroy() {
 
 }
 
+// 设置模块参数
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	//m.init()
 	m.ModuleId = moduleSettings.Id
+	if m.ModuleType == "Gateway" {
+		m.ConnMang = true
+		m.ReadChan = make(chan []byte, 1000000)
+		m.WriteChan = make(chan []byte, 1000000)
+	} else {
+		m.ConnMang = false
+		m.ReadChan = make(chan []byte, 10000)
+		m.WriteChan = make(chan []byte, 10000)
+	}
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -161,6 +169,7 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	return
 }
 
+// 注册模块到注册中心
 func (m *Basemodule) Register(closeSig chan bool) {
 	// 注册标志存在，并且为true时，才发送注册消息
 	if !m.registerflag {
@@ -206,42 +215,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 	}
 }
 
-func (m *Basemodule) ResultPackege(moduleType string, code int, msg string, data interface{}) []byte {
-	result := &Result{}
-	if code == 0 {
-		result.Status = "ok"
-	} else {
-		result.Status = "err"
-	}
-
-	result.Module = moduleType
-
-	result.Code = code
-
-	result.Msg = msg
-
-	//data_type := reflect.TypeOf(data)
-	//if data_type != nil {
-	//	if data_type.Kind().String() == "struct" {
-	//		buff, _ := json.Marshal(data)
-	//		result.Data = string(buff)
-	//	}
-	//}
-
-	buff, _ := json.Marshal(data)
-	result.Data = string(buff)
-
-	resbuff, _ := json.Marshal(result)
-
-	if result.Status == "ok" {
-		log.Release("[%10s]%s", moduleType, string(resbuff))
-	} else {
-		log.Error("[%10s]%s", moduleType, string(resbuff))
-	}
-
-	return resbuff
-}
-
+// TCP连接回调函数
 func (m *Basemodule) Handler(conn commconn.CommConn) {
 	defer func() { //必须要先声明defer，否则不能捕获到panic异常
 		if err := recover(); err != nil {
@@ -253,18 +227,20 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			}
 			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
 			//log.Error(err.(error).Error())
-			conn.WriteMsg(m.ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+			conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
 		}
 		conn.Close()
 	}()
+
 	//var err error
 	for {
+		fmt.Println("before0")
 		buff, err := conn.ReadMsg()
 		if err != nil {
 			panic(err)
 		}
 		// 解析收到的消息
-		msg := msg.Msg{}
+		msg := Msg{}
 		json.Unmarshal(buff, &msg)
 		if err != nil {
 			panic(err)
@@ -272,17 +248,34 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
-			conn.WriteMsg(m.ResultPackege("Register", 0, "注册成功！", nil))
+			conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
 			continue
 		}
-		var data []byte
-		data, err = m.DoWork(buff)
-		if err != nil {
-			panic(err)
-		} else {
-			conn.WriteMsg(data)
-		}
 
-		time.Sleep(1 * time.Millisecond)
+		fmt.Println("before", string(buff))
+		m.ReadChan <- buff
+		fmt.Println("end", string(buff))
 	}
+}
+
+func (m *Basemodule) DealReadChan() {
+	//time.Sleep(10 * time.Second)
+	//for b := range m.ReadChan {
+	//	fmt.Println(111)
+	//	m.DoWork(b)
+	//}
+
+	fmt.Println("startttttttttttttttt")
+	for {
+		select {
+		case ri := <-m.ReadChan:
+			fmt.Println("ri", string(ri))
+			m.DoWork(ri)
+		}
+	}
+
+	//for {
+	//	fmt.Println("chan",string(<-m.ReadChan))
+	//}
+
 }
