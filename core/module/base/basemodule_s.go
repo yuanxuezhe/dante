@@ -40,11 +40,12 @@ type Basemodule struct {
 	Conns        map[commconn.CommConn]string
 	ReadChan     chan []byte
 	WriteChan    chan []byte
+	Count        int
 }
 
 // 取模块ID
 func (m *Basemodule) GetId() string {
-	return m.ModuleId //+ "  " + m.TcpAddr + "  " + m.WsAddr
+	return m.ModuleId
 }
 
 // 取模块类型
@@ -72,8 +73,8 @@ func (m *Basemodule) Run(closeSig chan bool) {
 	// tcp
 	if len(m.TcpAddr) > 0 {
 		tcpServer = &tcp.TCPServer{
-			Addr: m.TcpAddr,
-			//MaxConnNum:      100,
+			Addr:            m.TcpAddr,
+			MaxConnNum:      1000000,
 			PendingWriteNum: 1000,
 			Callback:        m.Handler,
 		}
@@ -82,8 +83,8 @@ func (m *Basemodule) Run(closeSig chan bool) {
 	// web
 	if len(m.WsAddr) > 0 {
 		wsServer = &web.WSServer{
-			Addr: m.WsAddr,
-			//MaxConnNum:      100,
+			Addr:            m.WsAddr,
+			MaxConnNum:      1000000,
 			PendingWriteNum: 1000,
 			HTTPTimeout:     5 * time.Second,
 			Callback:        m.Handler,
@@ -123,10 +124,10 @@ func (m *Basemodule) OnDestroy() {
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	//m.init()
 	m.ModuleId = moduleSettings.Id
-
+	m.Count = 0
 	m.ConnMang = false
-	m.ReadChan = make(chan []byte, 10000)
-	m.WriteChan = make(chan []byte, 10000)
+	m.ReadChan = make(chan []byte, 2)
+	m.WriteChan = make(chan []byte, 2)
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -246,17 +247,24 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			continue
 		}
 
-		fmt.Println("chan:", m.ModuleType, string(buff))
 		m.ReadChan <- buff
+		m.Count = m.Count + 1
+		fmt.Println(m.Count)
 	}
 }
 
 func (m *Basemodule) DealReadChan() {
 	for {
+		fmt.Println("len:", len(m.ReadChan))
 		select {
 		case ri := <-m.ReadChan:
 			fmt.Println("ri", m.ModuleType, string(ri))
-			m.DoWork(ri)
+			buff, err := m.DoWork(ri)
+			if err != nil {
+				m.WriteChan <- []byte(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+			} else {
+				m.WriteChan <- buff
+			}
 		}
 	}
 }
