@@ -7,6 +7,7 @@ import (
 
 type Msg struct {
 	Id   string `json:"id"`
+	Addr string `json:"addr"`
 	Mac  string `json:"mac"`
 	Body string `json:"body"`
 }
@@ -17,6 +18,11 @@ type Result struct {
 	Code   int    `json:"code"`   // 错误码
 	Msg    string `json:"msg"`    // 消息
 	Data   string `json:"data"`   // 结果
+}
+
+type ResultWithIp struct {
+	Ip      string `json:"ip"`      // 模块类型
+	Results []byte `json:"results"` // 结果
 }
 
 func PackageMsg(id string, body string) []byte {
@@ -33,7 +39,20 @@ func PackageMsg(id string, body string) []byte {
 	return jsons
 }
 
-//
+func ResultIpPackege(ip string, Results []byte) []byte {
+	m := &ResultWithIp{
+		Ip:      ip,
+		Results: Results,
+	}
+
+	jsons, err := json.Marshal(m) //转换成JSON返回的是byte[]
+
+	if err != nil {
+		panic(err)
+	}
+	return jsons
+}
+
 func ResultPackege(moduleType string, code int, msg string, data interface{}) []byte {
 	result := &Result{}
 	if code == 0 {
@@ -54,9 +73,9 @@ func ResultPackege(moduleType string, code int, msg string, data interface{}) []
 	resbuff, _ := json.Marshal(result)
 
 	if result.Status == "ok" {
-		log.Release("[%10s]%s", moduleType, string(resbuff))
+		log.Release("Resule:%s", string(resbuff))
 	} else {
-		log.Error("[%10s]%s", moduleType, string(resbuff))
+		log.Error("Resule:%s", string(resbuff))
 	}
 
 	return resbuff

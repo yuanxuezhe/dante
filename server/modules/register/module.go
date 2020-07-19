@@ -25,14 +25,12 @@ type ConnSet map[net.Conn]struct{}
 
 type Register struct {
 	base.Basemodule
-	conns   ConnSet
 	modules map[string]base.ModuleInfo
 }
 
 //var MapRegister map[string]base.Basemodule
 
 func (m *Register) init() {
-	m.conns = make(ConnSet)
 	m.modules = make(map[string]base.ModuleInfo)
 	//MapRegister = make(map[string]base.Basemodule, 1000)
 }

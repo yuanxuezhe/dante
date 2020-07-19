@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	//network "gitee.com/yuanxuezhe/ynet/tcp"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -37,10 +36,9 @@ type Basemodule struct {
 	registerflag bool
 	DoWork       func([]byte) ([]byte, error) `json:"-"`
 	ConnMang     bool
-	Conns        map[commconn.CommConn]string
+	Conns        map[string]commconn.CommConn
 	ReadChan     chan []byte
 	WriteChan    chan []byte
-	Count        int
 }
 
 // 取模块ID
@@ -91,7 +89,11 @@ func (m *Basemodule) Run(closeSig chan bool) {
 		}
 	}
 
-	go m.DealReadChan()
+	for k := 0; k < 2; k++ {
+		go m.DealReadChan()
+	}
+
+	go m.DealWriteChan()
 
 	if tcpServer != nil {
 		tcpServer.Start()
@@ -124,10 +126,10 @@ func (m *Basemodule) OnDestroy() {
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	//m.init()
 	m.ModuleId = moduleSettings.Id
-	m.Count = 0
-	m.ConnMang = false
-	m.ReadChan = make(chan []byte, 2)
-	m.WriteChan = make(chan []byte, 2)
+	//m.ConnMang = false
+	m.ReadChan = make(chan []byte, 20)
+	m.WriteChan = make(chan []byte, 20)
+	m.Conns = make(map[string]commconn.CommConn, 500)
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -186,6 +188,8 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		return
 	}
 
+	jsons = PackageMsg("Register", string(jsons))
+
 	for {
 		conn := ynet.NewTcpclient(Conf.RegisterCentor)
 
@@ -228,12 +232,19 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		conn.Close()
 	}()
 
+	RemoteAddr := conn.RemoteAddr().String()
+	// 保存 TCP
+	m.Conns[RemoteAddr] = conn
 	//var err error
 	for {
 		buff, err := conn.ReadMsg()
 		if err != nil {
 			panic(err)
 		}
+		if m.ModuleType != "Gateway" {
+			log.Release("Params:%s", buff)
+		}
+
 		// 解析收到的消息
 		msg := Msg{}
 		json.Unmarshal(buff, &msg)
@@ -247,23 +258,60 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			continue
 		}
 
+		msg.Addr = RemoteAddr
+
+		buff, err = json.Marshal(msg)
+		if err != nil {
+			panic(err)
+		}
+
 		m.ReadChan <- buff
-		m.Count = m.Count + 1
-		fmt.Println(m.Count)
 	}
 }
 
 func (m *Basemodule) DealReadChan() {
+	//startT := time.Now()		//计算当前时间
+	//Num := 0
 	for {
-		fmt.Println("len:", len(m.ReadChan))
 		select {
 		case ri := <-m.ReadChan:
-			fmt.Println("ri", m.ModuleType, string(ri))
-			buff, err := m.DoWork(ri)
+			m.Work(ri)
+		}
+	}
+}
+
+func (m *Basemodule) Work(msgs []byte) {
+	// 解析收到的消息
+	msg := Msg{}
+	err := json.Unmarshal(msgs, &msg)
+	if err != nil {
+		panic(err)
+	}
+
+	var buff []byte
+
+	buff, err = m.DoWork([]byte(msg.Body))
+
+	if err != nil {
+		buff = ResultPackege(m.ModuleType, 1, err.(error).Error(), nil)
+	}
+	m.WriteChan <- ResultIpPackege(msg.Addr, buff)
+	//<- m.Count
+}
+
+func (m *Basemodule) DealWriteChan() {
+	for {
+		select {
+		case ri := <-m.WriteChan:
+			res := ResultWithIp{}
+			err := json.Unmarshal(ri, &res)
 			if err != nil {
-				m.WriteChan <- []byte(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
-			} else {
-				m.WriteChan <- buff
+				continue
+			}
+
+			if conn, ok := m.Conns[res.Ip]; ok {
+				log.Release("[%8s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
+				conn.WriteMsg(res.Results)
 			}
 		}
 	}

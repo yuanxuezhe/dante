@@ -109,11 +109,10 @@ func (t *Userinfo) CheckAccountExist() (userinfo *Userinfo, err error) {
 	}
 	defer stmt.Close()
 	rows, err := stmt.Query(t.Userid, t.Phone, t.Email, t.Passwd)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
-
+	defer rows.Close()
 	Mysqlpool.Put(conn)
 
 	if rows.Next() {
@@ -146,6 +145,7 @@ func (t *Userinfo) CheckAvailable_Phone() error {
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	Mysqlpool.Put(conn)
 
 	if rows.Next() {
@@ -165,11 +165,11 @@ func (t *Userinfo) CheckAvailable_Email() error {
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	Mysqlpool.Put(conn)
 
 	if rows.Next() {
 		return errors.New("phone num has been used!")
 	}
-
 	return nil
 }

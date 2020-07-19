@@ -4,99 +4,122 @@ package base
 //import (
 //	. "dante/core/conf"
 //	"dante/core/log"
-//	"dante/core/network"
+//	. "dante/core/msg"
 //	"encoding/json"
 //	"fmt"
+//	"gitee.com/yuanxuezhe/ynet"
+//	commconn "gitee.com/yuanxuezhe/ynet/Conn"
+//	web "gitee.com/yuanxuezhe/ynet/http"
+//	tcp "gitee.com/yuanxuezhe/ynet/tcp"
 //	"strings"
 //	"time"
+//
+//	//network "gitee.com/yuanxuezhe/ynet/tcp"
+//	_ "github.com/go-sql-driver/mysql"
 //)
+//
+//// 发送注册信息
+//type ModuleInfo struct {
+//	ModuleId      string // 模块名称
+//	ModuleType    string // 模块类型
+//	ModuleVersion string // 模块版本号
+//	TcpAddr       string
+//	Status        int
+//}
 //
 //type Basemodule struct {
 //	ModuleId      string // 模块名称
 //	ModuleType    string // 模块类型
 //	ModuleVersion string // 模块版本号
-//	registduring  int    // 注册心跳、断开时间间隔
+//	Registduring  int    // 注册心跳、断开时间间隔
 //	TcpAddr       string
 //	WsAddr        string
+//	//conn          net.Conn
+//	registerflag bool
+//	DoWork       func([]byte) ([]byte, error) `json:"-"`
+//	ConnMang     bool
+//	Conns        map[string]commconn.CommConn
+//	ReadChan     chan []byte
+//	WriteChan    chan []byte
+//	Count        chan int
 //}
 //
+//// 取模块ID
 //func (m *Basemodule) GetId() string {
-//	return m.ModuleId //+ "  " + m.TcpAddr + "  " + m.WsAddr
+//	return m.ModuleId
 //}
 //
+//// 取模块类型
 //func (m *Basemodule) GetType() string {
 //	//Very important, it needs to correspond to the Module configuration in the configuration file
 //	return m.ModuleType
 //}
+//
+//// 取模块版本
 //func (m *Basemodule) Version() string {
 //	//You can understand the code version during monitoring
 //	return m.ModuleVersion
 //}
+//
+//// 模块初始化
 //func (m *Basemodule) OnInit() {
 //
 //}
 //
+//// 运行模块
 //func (m *Basemodule) Run(closeSig chan bool) {
-//	var wsServer *network.WSServer
-//	if m.WsAddr != "" {
-//		wsServer = new(network.WSServer)
-//		wsServer.Addr = m.WsAddr
-//		//wsServer.MaxConnNum = gate.MaxConnNum
-//		//wsServer.PendingWriteNum = gate.PendingWriteNum
-//		//wsServer.MaxMsgLen = gate.MaxMsgLen
-//		//wsServer.HTTPTimeout = gate.HTTPTimeout
-//		//wsServer.CertFile = gate.CertFile
-//		//wsServer.KeyFile = gate.KeyFile
-//		wsServer.NewAgent = func(conn *network.WSConn) network.Agent {
-//			agent := network.Agent{Conn: conn}
-//			//if gate.AgentChanRPC != nil {
-//			//	gate.AgentChanRPC.Go("NewAgent", a)
-//			//}
-//			return agent
-//		}
-//	}
-//	var tcpServer *network.TCPServer
-//	if m.TcpAddr != "" {
-//		tcpServer = new(network.TCPServer)
-//		tcpServer.Addr = m.TcpAddr
-//		//tcpServer.MaxConnNum = gate.MaxConnNum
-//		//tcpServer.PendingWriteNum = gate.PendingWriteNum
-//		tcpServer.LenMsgLen = 4
-//		tcpServer.MaxMsgLen = 1000000
-//		tcpServer.LittleEndian = false
-//		tcpServer.NewAgent = func(conn *network.TCPConn) network.Agent {
-//			agent := network.Agent{Conn: conn}
-//			return agent
+//	var tcpServer *tcp.TCPServer
+//	var wsServer *web.WSServer
+//
+//	// tcp
+//	if len(m.TcpAddr) > 0 {
+//		tcpServer = &tcp.TCPServer{
+//			Addr:            m.TcpAddr,
+//			MaxConnNum:      1000000,
+//			PendingWriteNum: 1000,
+//			Callback:        m.Handler,
 //		}
 //	}
 //
-//	var info string
+//	// web
+//	if len(m.WsAddr) > 0 {
+//		wsServer = &web.WSServer{
+//			Addr:            m.WsAddr,
+//			MaxConnNum:      1000000,
+//			PendingWriteNum: 1000,
+//			HTTPTimeout:     5 * time.Second,
+//			Callback:        m.Handler,
+//		}
+//	}
 //
 //	if tcpServer != nil {
 //		tcpServer.Start()
-//		info += " TcpAddr:" + m.TcpAddr
+//		log.Release("Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
 //	}
 //
 //	if wsServer != nil {
 //		wsServer.Start()
-//		info += " WsAddr:" + m.WsAddr
+//		log.Release("Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
 //	}
 //
-//	log.Release("Module[%-10s|%-10s] start successful :%s", m.GetId(), m.Version(), info)
-//
+//	// 关闭系统
 //	<-closeSig
-//	if wsServer != nil {
-//		wsServer.Close()
-//	}
+//
 //	if tcpServer != nil {
 //		tcpServer.Close()
 //	}
+//
+//	if wsServer != nil {
+//		wsServer.Close()
+//	}
 //}
 //
+//// 关闭
 //func (m *Basemodule) OnDestroy() {
 //
 //}
 //
+//// 设置模块参数
 //func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 //	m.ModuleId = moduleSettings.Id
 //
@@ -119,48 +142,122 @@ package base
 //	}
 //
 //	if value, ok := moduleSettings.Settings["Registduring"].(float64); ok {
-//		m.registduring = int(value)
+//		m.Registduring = int(value)
 //	} else {
 //		err = fmt.Errorf("ModuleId:%s 参数[RegistBeatingduring]设置有误", moduleSettings.Id)
 //		return
 //	}
 //
+//	m.registerflag = false
+//	// 注册标志存在，并且为true时，才发送注册消息
+//	if v, ok := moduleSettings.Settings["Register"].(bool); ok {
+//		if v == true {
+//			m.registerflag = true
+//		}
+//	}
+//
 //	return
 //}
 //
+//// 注册模块到注册中心
 //func (m *Basemodule) Register(closeSig chan bool) {
-//	agent := &network.Agent{}
-//	//o := new(network.TCPConn)
-//	//a.conn = o
-//	if strings.ToUpper(Conf.RegisterProtocol) == "TCP" {
-//		tcpClient := new(network.TCPClient)
-//		tcpClient.Addr = Conf.RegisterCentor
-//		tcpClient.ConnectInterval = time.Duration(m.registduring) * time.Second
-//		tcpClient.PendingWriteNum = 100
-//		tcpClient.LenMsgLen = 4
-//		tcpClient.MinMsgLen = 0
-//		tcpClient.MaxMsgLen = 100000
-//		tcpClient.LittleEndian = false
-//
-//		tcpClient.Agent = agent
-//
-//		tcpClient.Start1()
-//	} else if strings.ToUpper(Conf.RegisterProtocol) == "HTTP" {
-//		wsClient := new(network.WSClient)
-//		wsClient.Addr = Conf.RegisterCentor
-//		wsClient.ConnectInterval = time.Duration(m.registduring) * time.Second
-//
-//		//wsClient.Agent = agent
-//		wsClient.Connect()
+//	// 注册标志存在，并且为true时，才发送注册消息
+//	if !m.registerflag {
+//		return
 //	}
 //
-//	jsons, errs := json.Marshal(m) //转换成JSON返回的是byte[]
-//	if errs != nil {
-//		fmt.Println(errs.Error())
+//	moduleInfo := &ModuleInfo{
+//		ModuleId:      m.ModuleId,
+//		ModuleType:    m.ModuleType,
+//		ModuleVersion: m.ModuleVersion,
+//		TcpAddr:       m.TcpAddr,
+//		Status:        0, // 0 表示注册
 //	}
 //
-//	agent.WriteMsg(jsons)
-//	<-closeSig
+//	jsons, err := json.Marshal(moduleInfo) //转换成JSON返回的是byte[]
+//	if err != nil {
+//		fmt.Println(err.Error())
+//		return
+//	}
 //
-//	agent.Conn.Close()
+//	jsons = PackageMsg("Register", string(jsons))
+//
+//	for {
+//		conn := ynet.NewTcpclient(Conf.RegisterCentor)
+//
+//		// 发送注册消息
+//		err = conn.WriteMsg(jsons)
+//		if err != nil {
+//			fmt.Printf("Module[%-10s|%-10s] register failes:%s", err)
+//			conn.Close()
+//			continue
+//		}
+//
+//		// 接收注册中心应答
+//		buff, err := conn.ReadMsg()
+//		if err != nil {
+//			fmt.Printf("%s", err)
+//			conn.Close()
+//			continue
+//		} else {
+//			fmt.Println("首次注册应答  ", conn.LocalAddr(), "==>", conn.RemoteAddr(), "    ", string(buff))
+//			conn.Close()
+//			break
+//		}
+//	}
+//}
+//
+//// TCP连接回调函数
+//func (m *Basemodule) Handler(conn commconn.CommConn) {
+//	defer func() { //必须要先声明defer，否则不能捕获到panic异常
+//		if err := recover(); err != nil {
+//			if err.(error).Error() == "EOF" {
+//				return
+//			}
+//			if strings.Contains(err.(error).Error(), "use of closed network connection") {
+//				return
+//			}
+//			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
+//			//log.Error(err.(error).Error())
+//			conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+//		}
+//		conn.Close()
+//	}()
+//
+//	//var err error
+//	for {
+//		buff, err := conn.ReadMsg()
+//		if err != nil {
+//			panic(err)
+//		}
+//		if m.ModuleType != "Gateway" {
+//			log.Release("Params:%s",buff)
+//		}
+//
+//		// 解析收到的消息
+//		msg := Msg{}
+//		json.Unmarshal(buff, &msg)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// 若为注册消息，直接忽略
+//		if msg.Id == "Register" {
+//			conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
+//			continue
+//		}
+//
+//		buff, err = json.Marshal(msg)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		buff, err = m.DoWork([]byte(msg.Body))
+//
+//		if err != nil {
+//			buff = ResultPackege(m.ModuleType, 1, err.(error).Error(), nil)
+//		}
+//
+//		conn.WriteMsg(buff)
+//	}
 //}
