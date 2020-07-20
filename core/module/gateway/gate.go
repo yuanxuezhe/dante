@@ -41,7 +41,6 @@ func (m *Gate) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	m.Conns = make(map[string]commconn.CommConn, 1000000)
 	m.ReadChan = make(chan []byte, 1000000)
 	m.WriteChan = make(chan []byte, 1000000)
-	m.Count = make(chan int, 100)
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -90,7 +89,7 @@ func (m *Gate) Run(closeSig chan bool) {
 		}
 	}
 
-	for k := 0; k < 2; k++ {
+	for k := 0; k < 1; k++ {
 		go m.DealReadChan()
 	}
 
@@ -120,6 +119,9 @@ func (m *Gate) Run(closeSig chan bool) {
 
 // TCP连接回调函数
 func (m *Gate) Handler(conn commconn.CommConn) {
+	// 将客户端远程地址作为连接的key，保存TCP连接，供返回值调用
+	RemoteAddr := conn.RemoteAddr().String()
+	m.Conns[RemoteAddr] = conn
 	defer func() { //必须要先声明defer，否则不能捕获到panic异常
 		if err := recover(); err != nil {
 			if err.(error).Error() == "EOF" {
@@ -128,37 +130,21 @@ func (m *Gate) Handler(conn commconn.CommConn) {
 			if strings.Contains(err.(error).Error(), "use of closed network connection") {
 				return
 			}
-			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
-			//log.Error(err.(error).Error())
-			conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+			m.WriteChan <- ResultIpPackege(RemoteAddr, ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
 		}
 		conn.Close()
 	}()
 
-	RemoteAddr := conn.RemoteAddr().String()
-	// 保存 TCP
-	m.Conns[RemoteAddr] = conn
-	//var err error
 	for {
 		buff, err := conn.ReadMsg()
 		if err != nil {
 			panic(err)
 		}
-		if m.ModuleType != "Gateway" {
-			log.Release("Params:%s", buff)
-		}
-
 		// 解析收到的消息
 		msg := Msg{}
 		json.Unmarshal(buff, &msg)
 		if err != nil {
 			panic(err)
-		}
-
-		// 若为注册消息，直接忽略
-		if msg.Id == "Register" {
-			conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
-			continue
 		}
 
 		msg.Addr = RemoteAddr
@@ -173,36 +159,23 @@ func (m *Gate) Handler(conn commconn.CommConn) {
 }
 
 func (m *Gate) DealReadChan() {
-	//startT := time.Now()		//计算当前时间
-	//Num := 0
-	//var Speed float64
 	for {
 		select {
 		case ri := <-m.ReadChan:
-			//Num  = Num + 1
-			m.Work(ri)
-			//rs := time.Since(startT).Seconds()
-			//if rs > 1 {
-			//	Speed = float64(Num) / rs
-			//	Num = 0
-			//	startT = time.Now()
-			//}
-			//tc := time.Since(startT)
-			//if tc.Seconds() < 1 {
-			//
-			//}
-			//fmt.Printf("[%s]Speed = %v\n", m.ModuleId,Speed)
+			go m.Work(ri)
 		}
 	}
 }
 
 func (m *Gate) Work(msgs []byte) {
 	// 解析收到的消息
-	msg := Msg{}
-	err := json.Unmarshal(msgs, &msg)
+	dataBuf := make(map[string]interface{})
+	err := json.Unmarshal(msgs, &dataBuf)
 	if err != nil {
 		panic(err)
 	}
+
+	Addr, _ := dataBuf["addr"].(string)
 
 	var buff []byte
 
@@ -211,7 +184,7 @@ func (m *Gate) Work(msgs []byte) {
 	if err != nil {
 		buff = ResultPackege(m.ModuleType, 1, err.(error).Error(), nil)
 	}
-	m.WriteChan <- ResultIpPackege(msg.Addr, buff)
+	m.WriteChan <- ResultIpPackege(Addr, buff)
 }
 
 func (m *Gate) DealWriteChan() {
@@ -225,7 +198,7 @@ func (m *Gate) DealWriteChan() {
 			}
 
 			if conn, ok := m.Conns[res.Ip]; ok {
-				//log.Release("[%8s][%s ==> %s] %s",m.ModuleId,conn.LocalAddr().String(),  conn.RemoteAddr().String(),string(res.Results))
+				log.Release("[%8s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
 				conn.WriteMsg(res.Results)
 			}
 		}

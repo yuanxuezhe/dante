@@ -241,9 +241,8 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		if err != nil {
 			panic(err)
 		}
-		if m.ModuleType != "Gateway" {
-			log.Release("Params:%s", buff)
-		}
+
+		log.Release("Params:%s", buff)
 
 		// 解析收到的消息
 		msg := Msg{}
@@ -296,7 +295,6 @@ func (m *Basemodule) Work(msgs []byte) {
 		buff = ResultPackege(m.ModuleType, 1, err.(error).Error(), nil)
 	}
 	m.WriteChan <- ResultIpPackege(msg.Addr, buff)
-	//<- m.Count
 }
 
 func (m *Basemodule) DealWriteChan() {
@@ -310,7 +308,7 @@ func (m *Basemodule) DealWriteChan() {
 			}
 
 			if conn, ok := m.Conns[res.Ip]; ok {
-				log.Release("[%8s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
+				//log.Release("[%8s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
 				conn.WriteMsg(res.Results)
 			}
 		}

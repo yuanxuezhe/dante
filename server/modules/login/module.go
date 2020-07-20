@@ -8,7 +8,6 @@ import (
 	"dante/server/util/snogenerator"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 )
 
@@ -48,7 +47,6 @@ func (m *LoginManage) DoWork(buff []byte) ([]byte, error) {
 		panic(err)
 	}
 
-	fmt.Println("Phone:", loginInfo.Phone)
 	userinfo := tables.Userinfo{}
 	userinfo.Userid = loginInfo.Userid
 	userinfo.Phone = loginInfo.Phone
