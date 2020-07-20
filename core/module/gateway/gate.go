@@ -89,7 +89,7 @@ func (m *Gate) Run(closeSig chan bool) {
 		}
 	}
 
-	for k := 0; k < 1; k++ {
+	for k := 0; k < 10; k++ {
 		go m.DealReadChan()
 	}
 
@@ -162,7 +162,7 @@ func (m *Gate) DealReadChan() {
 	for {
 		select {
 		case ri := <-m.ReadChan:
-			go m.Work(ri)
+			m.Work(ri)
 		}
 	}
 }
