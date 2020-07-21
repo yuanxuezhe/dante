@@ -274,7 +274,7 @@ func (m *Basemodule) DealReadChan() {
 	for {
 		select {
 		case ri := <-m.ReadChan:
-			m.Work(ri)
+			go m.Work(ri)
 		}
 	}
 }

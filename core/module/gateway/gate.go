@@ -89,9 +89,7 @@ func (m *Gate) Run(closeSig chan bool) {
 		}
 	}
 
-	for k := 0; k < 10; k++ {
-		go m.DealReadChan()
-	}
+	go m.DealReadChan()
 
 	go m.DealWriteChan()
 
