@@ -31,7 +31,7 @@ type Register struct {
 //var MapRegister map[string]base.Basemodule
 
 func (m *Register) init() {
-	m.modules = make(map[string]base.ModuleInfo)
+	m.modules = make(map[string]base.ModuleInfo, 50)
 	//MapRegister = make(map[string]base.Basemodule, 1000)
 }
 
@@ -43,6 +43,8 @@ func (m *Register) DoWork(buff []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	m.modules[moduleInfo.ModuleId] = moduleInfo
 
 	// 创建注册连接
 	go m.CreateRegisterBeats(moduleInfo)

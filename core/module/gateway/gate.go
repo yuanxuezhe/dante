@@ -60,6 +60,14 @@ func (m *Gate) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 		}
 	}
 
+	m.Registerflag = false
+	// 注册标志存在，并且为true时，才发送注册消息
+	if v, ok := moduleSettings.Settings["Register"].(bool); ok {
+		if v == true {
+			m.Registerflag = true
+		}
+	}
+
 	return
 }
 

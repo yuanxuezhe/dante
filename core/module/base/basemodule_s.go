@@ -33,7 +33,7 @@ type Basemodule struct {
 	TcpAddr       string
 	WsAddr        string
 	//conn          net.Conn
-	registerflag bool
+	Registerflag bool
 	DoWork       func([]byte) ([]byte, error) `json:"-"`
 	ConnMang     bool
 	Conns        map[string]commconn.CommConn
@@ -89,9 +89,7 @@ func (m *Basemodule) Run(closeSig chan bool) {
 		}
 	}
 
-	for k := 0; k < 2; k++ {
-		go m.DealReadChan()
-	}
+	go m.DealReadChan()
 
 	go m.DealWriteChan()
 
@@ -156,11 +154,11 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 		return
 	}
 
-	m.registerflag = false
+	m.Registerflag = false
 	// 注册标志存在，并且为true时，才发送注册消息
 	if v, ok := moduleSettings.Settings["Register"].(bool); ok {
 		if v == true {
-			m.registerflag = true
+			m.Registerflag = true
 		}
 	}
 
@@ -170,7 +168,7 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 // 注册模块到注册中心
 func (m *Basemodule) Register(closeSig chan bool) {
 	// 注册标志存在，并且为true时，才发送注册消息
-	if !m.registerflag {
+	if !m.Registerflag {
 		return
 	}
 
