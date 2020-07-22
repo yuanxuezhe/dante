@@ -8,7 +8,6 @@ import (
 	. "dante/core/msg"
 	"encoding/json"
 	"errors"
-	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 )
 
@@ -17,13 +16,11 @@ var NewModule = func() module.Module {
 		Gate: gateway.Gate{Basemodule: basemodule.Basemodule{ModuleType: "Gateway", ModuleVersion: "1.3.3"}},
 	}
 	mod.Basemodule.DoWork = mod.DoWork
-	mod.modlueConns = make(map[string]commconn.CommConn, 100)
 	return mod
 }
 
 type Gateway struct {
 	gateway.Gate
-	modlueConns map[string]commconn.CommConn
 }
 
 func (g *Gateway) DoWork(buff []byte) ([]byte, error) {
@@ -46,18 +43,16 @@ func (g *Gateway) DoWork(buff []byte) ([]byte, error) {
 
 reconnect:
 
-	Addr, err := g.getIP(module)
+	dconn, err = g.GetModuleConn(module)
 	if err != nil {
 		return nil, err
 	}
-
-	dconn = g.getModuleConn(Addr)
 
 	res, err := g.CallModule(dconn, buff)
 	if err != nil {
 		times = times + 1
 		if times <= 10 {
-			delete(g.modlueConns, Addr)
+			//delete(g.ModlueConns, Addr)
 			log.Release("Reconnect %d times......", times)
 			goto reconnect
 		}
@@ -77,28 +72,6 @@ func (g *Gateway) CallModule(dconn commconn.CommConn, body []byte) ([]byte, erro
 		return nil, err
 	}
 	return buff, err
-}
-
-func (g *Gateway) getIP(moduletype string) (ip string, err error) {
-	if moduletype == "Login" {
-		ip = "192.168.2.3:9201"
-	} else if moduletype == "Goods" {
-		ip = "192.168.2.3:9301"
-	} else {
-		return "", errors.New("Undefined moudle:[" + moduletype + "]")
-	}
-
-	return ip, nil
-}
-
-func (g *Gateway) getModuleConn(ip string) (conn commconn.CommConn) {
-	if conn, ok := g.modlueConns[ip]; ok {
-		return conn
-	} else {
-		conns := ynet.NewTcpclient(ip)
-		g.modlueConns[ip] = conns
-		return g.modlueConns[ip]
-	}
 }
 
 //

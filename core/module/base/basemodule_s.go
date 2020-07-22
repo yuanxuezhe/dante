@@ -5,6 +5,7 @@ import (
 	"dante/core/log"
 	. "dante/core/msg"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
@@ -39,6 +40,8 @@ type Basemodule struct {
 	Conns        map[string]commconn.CommConn
 	ReadChan     chan []byte
 	WriteChan    chan []byte
+	Modules      map[string]ModuleInfo        // 记录注册信息
+	ModlueConns  map[string]commconn.CommConn // 记录模块连接
 }
 
 // 取模块ID
@@ -128,6 +131,8 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	m.ReadChan = make(chan []byte, 20)
 	m.WriteChan = make(chan []byte, 20)
 	m.Conns = make(map[string]commconn.CommConn, 500)
+	m.Modules = make(map[string]ModuleInfo, 50)
+	m.ModlueConns = make(map[string]commconn.CommConn, 100)
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -240,7 +245,9 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			panic(err)
 		}
 
-		log.Release("Params:%s", buff)
+		if m.ModuleType != "Gateway" {
+			log.Release("Params:%s", buff)
+		}
 
 		// 解析收到的消息
 		msg := Msg{}
@@ -252,6 +259,11 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		// 若为注册消息，直接忽略
 		if msg.Id == "Register" {
 			conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
+			//continue
+		}
+		if msg.Id == "RegisterList" {
+			json.Unmarshal([]byte(msg.Body), &m.Modules)
+			fmt.Println(m.ModuleId, " Register info:", m.Modules)
 			continue
 		}
 
@@ -267,8 +279,6 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 }
 
 func (m *Basemodule) DealReadChan() {
-	//startT := time.Now()		//计算当前时间
-	//Num := 0
 	for {
 		select {
 		case ri := <-m.ReadChan:
@@ -310,5 +320,37 @@ func (m *Basemodule) DealWriteChan() {
 				conn.WriteMsg(res.Results)
 			}
 		}
+	}
+}
+
+//func (m *Basemodule) GetIP(moduletype string) (ip string, err error) {
+//	if moduletype == "Login" {
+//		ip = "192.168.2.3:9201"
+//	} else if moduletype == "Goods" {
+//		ip = "192.168.2.3:9301"
+//	} else {
+//		return "", errors.New("Undefined moudle:[" + moduletype + "]")
+//	}
+//
+//	return ip, nil
+//}
+
+func (m *Basemodule) GetModuleConn(moduletype string) (commconn.CommConn, error) {
+	var ip string
+	for _, value := range m.Modules {
+		if value.ModuleType == moduletype {
+			ip = value.TcpAddr
+		}
+	}
+
+	if len(ip) == 0 {
+		return nil, errors.New("Undefined module:" + moduletype)
+	}
+	if conn, ok := m.ModlueConns[ip]; ok {
+		return conn, nil
+	} else {
+		conns := ynet.NewTcpclient(ip)
+		m.ModlueConns[ip] = conns
+		return m.ModlueConns[ip], nil
 	}
 }
