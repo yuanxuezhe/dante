@@ -225,6 +225,11 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			if err.(error).Error() == "EOF" {
 				return
 			}
+			if strings.Index(err.(error).Error(), "An existing connection was forcibly closed by the remote host") != -1 {
+				conn.WriteMsg(ResultPackege(m.ModuleType, 1, "connection was closed!["+conn.LocalAddr().String()+"==》"+conn.RemoteAddr().String()+"]", nil))
+				delete(m.Conns, conn.RemoteAddr().String())
+				return
+			}
 			if strings.Contains(err.(error).Error(), "use of closed network connection") {
 				return
 			}
@@ -263,7 +268,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		}
 		if msg.Id == "RegisterList" {
 			json.Unmarshal([]byte(msg.Body), &m.Modules)
-			fmt.Println(m.ModuleId, " Register info:", m.Modules)
+			//fmt.Println(m.ModuleId, " Register info:", m.Modules)
 			continue
 		}
 
@@ -340,6 +345,7 @@ func (m *Basemodule) GetModuleConn(moduletype string) (commconn.CommConn, error)
 	for _, value := range m.Modules {
 		if value.ModuleType == moduletype {
 			ip = value.TcpAddr
+			break
 		}
 	}
 

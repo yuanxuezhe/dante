@@ -25,6 +25,7 @@ type Register struct {
 //var MapRegister map[string]base.Basemodule
 
 func (m *Register) init() {
+	//m.Modules = make(map[string]base.ModuleInfo, 50)
 	m.Modules = make(map[string]base.ModuleInfo, 50)
 	//MapRegister = make(map[string]base.Basemodule, 1000)
 }
