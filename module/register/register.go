@@ -98,7 +98,7 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 		//	}
 		//	conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
 		//}
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	//var err error
@@ -114,7 +114,7 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 
 	// 解析收到的消息
 	msg := Msg{}
-	json.Unmarshal(buff, &msg)
+	err = json.Unmarshal(buff, &msg)
 	if err != nil {
 		panic(err)
 	}
@@ -124,7 +124,7 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 		return
 	}
 
-	conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
+	_ = conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
 
 	m.ReadChan <- buff
 	//}
@@ -132,7 +132,7 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 
 func (m *BaseRegister) CircleRegisterBeats() {
 	for {
-		m.RegisterBeats()
+		_ = m.RegisterBeats()
 		time.Sleep(time.Duration(m.Registduring) * time.Second)
 	}
 }
