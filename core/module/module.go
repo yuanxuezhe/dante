@@ -1,9 +1,9 @@
 package module
 
 import (
-	. "dante/core/conf"
-	"dante/core/log"
 	"fmt"
+	. "gitee.com/yuanxuezhe/dante/core/conf"
+	"gitee.com/yuanxuezhe/dante/core/log"
 	"sync"
 )
 

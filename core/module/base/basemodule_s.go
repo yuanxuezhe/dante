@@ -1,12 +1,12 @@
 package base
 
 import (
-	. "dante/core/conf"
-	"dante/core/log"
-	. "dante/core/msg"
 	"encoding/json"
 	"errors"
 	"fmt"
+	. "gitee.com/yuanxuezhe/dante/core/conf"
+	"gitee.com/yuanxuezhe/dante/core/log"
+	. "gitee.com/yuanxuezhe/dante/core/msg"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
@@ -22,25 +22,25 @@ type ModuleInfo struct {
 	ModuleId      string // 模块名称
 	ModuleType    string // 模块类型
 	ModuleVersion string // 模块版本号
-	TcpAddr       string
-	Status        int
+	TcpAddr       string // 注册地址
+	//Status        int
 }
 
+// 模块基类
 type Basemodule struct {
 	ModuleId      string // 模块名称
 	ModuleType    string // 模块类型
 	ModuleVersion string // 模块版本号
 	Registduring  int    // 注册心跳、断开时间间隔
-	TcpAddr       string
-	WsAddr        string
-	//conn          net.Conn
-	Registerflag bool
-	DoWork       func([]byte) ([]byte, error) `json:"-"`
-	ConnMang     bool
-	Conns        map[string]commconn.CommConn
-	ReadChan     chan []byte
-	WriteChan    chan []byte
+	TcpAddr       string // TCP连接地址
+	WsAddr        string // WEB连接地址
+
+	Registerflag bool                         // 注册标志
+	DoWork       func([]byte) ([]byte, error) // 回调函数
+	ReadChan     chan []byte                  // 读入队列
+	WriteChan    chan []byte                  // 写出队列
 	Modules      map[string]ModuleInfo        // 记录注册信息
+	Conns        map[string]commconn.CommConn // 客户端连接
 	ModlueConns  map[string]commconn.CommConn // 记录模块连接
 }
 
@@ -125,9 +125,7 @@ func (m *Basemodule) OnDestroy() {
 
 // 设置模块参数
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
-	//m.init()
 	m.ModuleId = moduleSettings.Id
-	//m.ConnMang = false
 	m.ReadChan = make(chan []byte, 20)
 	m.WriteChan = make(chan []byte, 20)
 	m.Conns = make(map[string]commconn.CommConn, 500)
@@ -182,7 +180,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		ModuleType:    m.ModuleType,
 		ModuleVersion: m.ModuleVersion,
 		TcpAddr:       m.TcpAddr,
-		Status:        0, // 0 表示注册
+		//Status:        0, // 0 表示注册
 	}
 
 	jsons, err := json.Marshal(moduleInfo) //转换成JSON返回的是byte[]
@@ -225,7 +223,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			if err.(error).Error() == "EOF" {
 				return
 			}
-			if strings.Index(err.(error).Error(), "An existing connection was forcibly closed by the remote host") != -1 {
+			if strings.Contains(err.(error).Error(), "An existing connection was forcibly closed by the remote host") {
 				conn.WriteMsg(ResultPackege(m.ModuleType, 1, "connection was closed!["+conn.LocalAddr().String()+"==》"+conn.RemoteAddr().String()+"]", nil))
 				delete(m.Conns, conn.RemoteAddr().String())
 				return
@@ -233,8 +231,6 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			if strings.Contains(err.(error).Error(), "use of closed network connection") {
 				return
 			}
-			//fmt.Println(err) //这里的err其实就是panic传入的内容，bug
-			//log.Error(err.(error).Error())
 			conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
 		}
 		conn.Close()
@@ -268,7 +264,6 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		}
 		if msg.Id == "RegisterList" {
 			json.Unmarshal([]byte(msg.Body), &m.Modules)
-			//fmt.Println(m.ModuleId, " Register info:", m.Modules)
 			continue
 		}
 
@@ -321,24 +316,11 @@ func (m *Basemodule) DealWriteChan() {
 			}
 
 			if conn, ok := m.Conns[res.Ip]; ok {
-				//log.Release("[%8s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
 				conn.WriteMsg(res.Results)
 			}
 		}
 	}
 }
-
-//func (m *Basemodule) GetIP(moduletype string) (ip string, err error) {
-//	if moduletype == "Login" {
-//		ip = "192.168.2.3:9201"
-//	} else if moduletype == "Goods" {
-//		ip = "192.168.2.3:9301"
-//	} else {
-//		return "", errors.New("Undefined moudle:[" + moduletype + "]")
-//	}
-//
-//	return ip, nil
-//}
 
 func (m *Basemodule) GetModuleConn(moduletype string) (commconn.CommConn, error) {
 	var ip string

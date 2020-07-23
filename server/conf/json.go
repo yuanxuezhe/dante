@@ -1,8 +1,8 @@
 package conf
 
 import (
-	"dante/core/log"
 	"encoding/json"
+	"gitee.com/yuanxuezhe/dante/core/log"
 	"io/ioutil"
 )
 

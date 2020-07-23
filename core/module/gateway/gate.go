@@ -1,11 +1,11 @@
 package gateway
 
 import (
-	. "dante/core/conf"
-	"dante/core/log"
-	base "dante/core/module/base"
-	. "dante/core/msg"
 	"encoding/json"
+	. "gitee.com/yuanxuezhe/dante/core/conf"
+	"gitee.com/yuanxuezhe/dante/core/log"
+	base "gitee.com/yuanxuezhe/dante/core/module/base"
+	. "gitee.com/yuanxuezhe/dante/core/msg"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
@@ -35,7 +35,6 @@ type Gate struct {
 func (m *Gate) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	m.ModuleId = moduleSettings.Id
 
-	m.ConnMang = true
 	m.Conns = make(map[string]commconn.CommConn, 1000000)
 	m.ReadChan = make(chan []byte, 1000000)
 	m.WriteChan = make(chan []byte, 1000000)

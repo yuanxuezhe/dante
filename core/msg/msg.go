@@ -1,8 +1,8 @@
 package msg
 
 import (
-	"dante/core/log"
 	"encoding/json"
+	"gitee.com/yuanxuezhe/dante/core/log"
 )
 
 type Msg struct {

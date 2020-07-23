@@ -1,13 +1,13 @@
 package gateway
 
 import (
-	"dante/core/log"
-	"dante/core/module"
-	basemodule "dante/core/module/base"
-	"dante/core/module/gateway"
-	. "dante/core/msg"
 	"encoding/json"
 	"errors"
+	"gitee.com/yuanxuezhe/dante/core/log"
+	"gitee.com/yuanxuezhe/dante/core/module"
+	basemodule "gitee.com/yuanxuezhe/dante/core/module/base"
+	"gitee.com/yuanxuezhe/dante/core/module/gateway"
+	. "gitee.com/yuanxuezhe/dante/core/msg"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 )
 
@@ -73,15 +73,3 @@ func (g *Gateway) CallModule(dconn commconn.CommConn, body []byte) ([]byte, erro
 	}
 	return buff, err
 }
-
-//
-//func (g *Gateway) processMsg() {
-//	for {
-//		select {
-//		//case <-g.ReadChan:
-//		//	return
-//		case msg := <-g.ReadChan:
-//			fmt.Println("channel", msg)
-//		}
-//	}
-//}

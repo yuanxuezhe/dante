@@ -1,13 +1,13 @@
 package main
 
 import (
-	"dante/core"
-	_ "dante/core/conf"
-	"dante/server/modules/gateway"
-	"dante/server/modules/goods"
-	"dante/server/modules/login"
-	"dante/server/modules/register"
-	_ "dante/server/util/pool"
+	"gitee.com/yuanxuezhe/dante/core"
+	_ "gitee.com/yuanxuezhe/dante/core/conf"
+	"gitee.com/yuanxuezhe/dante/server/modules/gateway"
+	"gitee.com/yuanxuezhe/dante/server/modules/goods"
+	"gitee.com/yuanxuezhe/dante/server/modules/login"
+	"gitee.com/yuanxuezhe/dante/server/modules/register"
+	_ "gitee.com/yuanxuezhe/dante/server/util/pool"
 )
 
 func main() {

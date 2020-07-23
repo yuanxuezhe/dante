@@ -1,9 +1,9 @@
 package core
 
 import (
-	. "dante/core/conf"
-	"dante/core/log"
-	"dante/core/module"
+	. "gitee.com/yuanxuezhe/dante/core/conf"
+	"gitee.com/yuanxuezhe/dante/core/log"
+	"gitee.com/yuanxuezhe/dante/core/module"
 	"os"
 	"os/signal"
 	"strings"

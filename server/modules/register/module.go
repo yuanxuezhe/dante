@@ -1,10 +1,10 @@
 package register
 
 import (
-	"dante/core/module"
-	base "dante/core/module/base"
-	"dante/core/module/register"
 	"encoding/json"
+	"gitee.com/yuanxuezhe/dante/core/module"
+	"gitee.com/yuanxuezhe/dante/core/module/base"
+	"gitee.com/yuanxuezhe/dante/core/module/register"
 	"net"
 )
 

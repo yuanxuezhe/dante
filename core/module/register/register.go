@@ -1,11 +1,11 @@
 package register
 
 import (
-	"dante/core/conf"
-	"dante/core/log"
-	base "dante/core/module/base"
-	"dante/core/msg"
 	"encoding/json"
+	"gitee.com/yuanxuezhe/dante/core/conf"
+	"gitee.com/yuanxuezhe/dante/core/log"
+	"gitee.com/yuanxuezhe/dante/core/module/base"
+	. "gitee.com/yuanxuezhe/dante/core/msg"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
@@ -82,6 +82,54 @@ func (m *BaseRegister) SetPorperty(moduleSettings *conf.ModuleSettings) (err err
 	return nil
 }
 
+// TCP连接回调函数
+func (m *BaseRegister) Handler(conn commconn.CommConn) {
+	defer func() { //必须要先声明defer，否则不能捕获到panic异常
+		//if err := recover(); err != nil {
+		//	if err.(error).Error() == "EOF" {
+		//		return
+		//	}
+		//	if strings.Contains(err.(error).Error(), "An existing connection was forcibly closed by the remote host") {
+		//		conn.WriteMsg(ResultPackege(m.ModuleType, 1, "connection was closed!["+conn.LocalAddr().String()+"==》"+conn.RemoteAddr().String()+"]", nil))
+		//		return
+		//	}
+		//	if strings.Contains(err.(error).Error(), "use of closed network connection") {
+		//		return
+		//	}
+		//	conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+		//}
+		conn.Close()
+	}()
+
+	//var err error
+	//for {
+	buff, err := conn.ReadMsg()
+	if err != nil {
+		panic(err)
+	}
+
+	if m.ModuleType != "Gateway" {
+		log.Release("Params:%s", buff)
+	}
+
+	// 解析收到的消息
+	msg := Msg{}
+	json.Unmarshal(buff, &msg)
+	if err != nil {
+		panic(err)
+	}
+
+	// 若为注册消息，直接忽略
+	if msg.Id != "Register" {
+		return
+	}
+
+	conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
+
+	m.ReadChan <- buff
+	//}
+}
+
 func (m *BaseRegister) CircleRegisterBeats() {
 	for {
 		m.RegisterBeats()
@@ -105,7 +153,7 @@ func (m *BaseRegister) RegisterBeats() error {
 			m.registerConns[value.TcpAddr] = conn
 		}
 
-		err = conn.WriteMsg(msg.PackageMsg("RegisterList", string(jsons)))
+		err = conn.WriteMsg(PackageMsg("RegisterList", string(jsons)))
 
 		if err != nil {
 			delete(m.Modules, k)

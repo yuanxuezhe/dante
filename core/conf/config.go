@@ -17,9 +17,9 @@ package conf
 import (
 	"bufio"
 	"bytes"
-	"dante/core/log"
 	"encoding/json"
 	"fmt"
+	"gitee.com/yuanxuezhe/dante/core/log"
 	"io/ioutil"
 	"os"
 	"os/exec"

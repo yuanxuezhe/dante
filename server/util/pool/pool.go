@@ -1,8 +1,8 @@
 package pool
 
 import (
-	"dante/core/conf"
 	"database/sql"
+	"gitee.com/yuanxuezhe/dante/core/conf"
 	"gitee.com/yuanxuezhe/ynet/yconnpool"
 	"time"
 )

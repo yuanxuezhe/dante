@@ -1,4 +1,4 @@
-module dante
+module gitee.com/yuanxuezhe/dante
 
 go 1.12
 
