@@ -2,8 +2,8 @@ package module
 
 import (
 	"fmt"
-	. "gitee.com/yuanxuezhe/dante/core/conf"
-	"gitee.com/yuanxuezhe/dante/core/log"
+	. "gitee.com/yuanxuezhe/dante/conf"
+	"gitee.com/yuanxuezhe/dante/log"
 	"sync"
 )
 

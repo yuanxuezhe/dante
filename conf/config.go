@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gitee.com/yuanxuezhe/dante/core/log"
+	"gitee.com/yuanxuezhe/dante/log"
 	"io/ioutil"
 	"os"
 	"os/exec"

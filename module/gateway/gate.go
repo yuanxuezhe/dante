@@ -2,10 +2,10 @@ package gateway
 
 import (
 	"encoding/json"
-	. "gitee.com/yuanxuezhe/dante/core/conf"
-	"gitee.com/yuanxuezhe/dante/core/log"
-	base "gitee.com/yuanxuezhe/dante/core/module/base"
-	. "gitee.com/yuanxuezhe/dante/core/msg"
+	"gitee.com/yuanxuezhe/dante/conf"
+	"gitee.com/yuanxuezhe/dante/log"
+	"gitee.com/yuanxuezhe/dante/module/base"
+	. "gitee.com/yuanxuezhe/dante/msg"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
@@ -32,7 +32,7 @@ type Gate struct {
 	LittleEndian bool
 }
 
-func (m *Gate) SetPorperty(moduleSettings *ModuleSettings) (err error) {
+func (m *Gate) SetPorperty(moduleSettings *conf.ModuleSettings) (err error) {
 	m.ModuleId = moduleSettings.Id
 
 	m.Conns = make(map[string]commconn.CommConn, 1000000)

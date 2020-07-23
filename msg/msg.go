@@ -2,7 +2,7 @@ package msg
 
 import (
 	"encoding/json"
-	"gitee.com/yuanxuezhe/dante/core/log"
+	"gitee.com/yuanxuezhe/dante/log"
 )
 
 type Msg struct {

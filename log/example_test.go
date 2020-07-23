@@ -1,7 +1,7 @@
 package log_test
 
 import (
-	"dante/core/log"
+	"gitee.com/yuanxuezhe/dante/log"
 	l "log"
 )
 

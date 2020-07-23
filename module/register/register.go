@@ -2,10 +2,10 @@ package register
 
 import (
 	"encoding/json"
-	"gitee.com/yuanxuezhe/dante/core/conf"
-	"gitee.com/yuanxuezhe/dante/core/log"
-	"gitee.com/yuanxuezhe/dante/core/module/base"
-	. "gitee.com/yuanxuezhe/dante/core/msg"
+	"gitee.com/yuanxuezhe/dante/conf"
+	"gitee.com/yuanxuezhe/dante/log"
+	"gitee.com/yuanxuezhe/dante/module/base"
+	. "gitee.com/yuanxuezhe/dante/msg"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	web "gitee.com/yuanxuezhe/ynet/http"
