@@ -19,17 +19,12 @@ type Gate struct {
 	MaxConnNum      int
 	PendingWriteNum int
 	MaxMsgLen       uint32
-	//Processor       network.Processor
-	//AgentChanRPC    *chanrpc.Server
 
 	// websocket
 	HTTPTimeout time.Duration
-	CertFile    string
-	KeyFile     string
 
-	// tcp
-	LenMsgLen    int
-	LittleEndian bool
+	CertFile string
+	KeyFile  string
 }
 
 func (m *Gate) SetPorperty(moduleSettings *conf.ModuleSettings) (err error) {

@@ -100,7 +100,7 @@ func (logger *Logger) doPrintf(level int, printLevel string, format string, a ..
 	}
 
 	format = printLevel + format
-	logger.baseLogger.Output(3, fmt.Sprintf(format, a...))
+	_ = logger.baseLogger.Output(3, fmt.Sprintf(format, a...))
 
 	if level == fatalLevel {
 		os.Exit(1)

@@ -198,7 +198,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 		err = conn.WriteMsg(jsons)
 		if err != nil {
 			fmt.Printf("Module[%-10s|%-10s] register failes:%s", err)
-			conn.Close()
+			_ = conn.Close()
 			continue
 		}
 

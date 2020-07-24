@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"gitee.com/yuanxuezhe/dante/log"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,8 +27,6 @@ import (
 )
 
 var (
-	LenStackBuf = 1024
-
 	Conf = Config{}
 )
 
@@ -131,10 +128,10 @@ func readFileInto(path string) error {
 }
 
 // If read the file has an error,it will throws a panic.
-func fileToStruct(path string, ptr *[]byte) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	*ptr = data
-}
+//func fileToStruct(path string, ptr *[]byte) {
+//	data, err := ioutil.ReadFile(path)
+//	if err != nil {
+//		panic(err)
+//	}
+//	*ptr = data
+//}
