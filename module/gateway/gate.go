@@ -192,7 +192,7 @@ func (m *Gate) Work(msgs []byte) {
 	buff, err = m.DoWork(msgs)
 
 	if err != nil {
-		buff = ResultPackege(m.ModuleType, 1, err.(error).Error(), nil)
+		buff = ResultPackege(m.ModuleType, m.ModuleId, 1, err.(error).Error(), nil)
 	}
 	m.WriteChan <- ResultIpPackege(Addr, buff)
 }
@@ -208,7 +208,7 @@ func (m *Gate) DealWriteChan() {
 			}
 
 			if conn, ok := m.Conns[res.Ip]; ok {
-				log.Release("[%8s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
+				log.Debug("[%-10s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
 				conn.WriteMsg(res.Results)
 			}
 		}

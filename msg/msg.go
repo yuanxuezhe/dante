@@ -53,7 +53,7 @@ func ResultIpPackege(ip string, Results []byte) []byte {
 	return jsons
 }
 
-func ResultPackege(moduleType string, code int, msg string, data interface{}) []byte {
+func ResultPackege(moduleType string, moduleId string, code int, msg string, data interface{}) []byte {
 	result := &Result{}
 	if code == 0 {
 		result.Status = "ok"
@@ -73,9 +73,9 @@ func ResultPackege(moduleType string, code int, msg string, data interface{}) []
 	resbuff, _ := json.Marshal(result)
 
 	if result.Status == "ok" {
-		log.Release("Resule:%s", string(resbuff))
+		log.Release("[%-10s]Resule:%s", moduleId, string(resbuff))
 	} else {
-		log.Error("Resule:%s", string(resbuff))
+		log.Error("[%-10s]Resule:%s", moduleId, string(resbuff))
 	}
 
 	return resbuff

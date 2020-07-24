@@ -31,7 +31,7 @@ type Logger struct {
 	baseFile   *os.File
 }
 
-func New(strLevel string, pathname string, flag int) (*Logger, error) {
+func New(strLevel string, pathname string, flag int, console bool) (*Logger, error) {
 	// level
 	var level int
 	switch strings.ToLower(strLevel) {
@@ -53,14 +53,36 @@ func New(strLevel string, pathname string, flag int) (*Logger, error) {
 	if pathname != "" {
 		now := time.Now()
 
-		filename := fmt.Sprintf("%d%02d%02d_%02d_%02d_%02d.log",
+		_, err := os.Stat(pathname)
+		fmt.Println(pathname)
+		if os.IsNotExist(err) {
+			// 创建文件夹
+			err := os.Mkdir(pathname, os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		pathname = fmt.Sprintf("%s\\%d%02d%02d",
+			pathname,
 			now.Year(),
 			now.Month(),
-			now.Day(),
+			now.Day())
+
+		filename := fmt.Sprintf("Userlogs-%02d%02d%02d.log",
 			now.Hour(),
 			now.Minute(),
 			now.Second())
 
+		_, err = os.Stat(pathname)
+		fmt.Println(pathname)
+		if os.IsNotExist(err) {
+			// 创建文件夹
+			err := os.Mkdir(pathname, os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
+		}
 		file, err := os.Create(path.Join(pathname, filename))
 		if err != nil {
 			return nil, err
@@ -123,7 +145,7 @@ func (logger *Logger) Fatal(format string, a ...interface{}) {
 	logger.doPrintf(fatalLevel, printFatalLevel, format, a...)
 }
 
-var gLogger, _ = New("debug", "", log.LstdFlags)
+var gLogger, _ = New("debug", "", log.LstdFlags, true)
 
 // It's dangerous to call the method on logging
 func Export(logger *Logger) {

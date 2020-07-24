@@ -75,8 +75,9 @@ type Redis struct {
 }
 
 type Mysql struct {
-	Url      string //redis://:[password]@[ip]:[port]/[db]
-	Maxcount int
+	Url          string //redis://:[password]@[ip]:[port]/[db]
+	MaxOpenConns int
+	MaxIdleConns int
 }
 
 type ModuleSettings struct {

@@ -1,9 +1,12 @@
 package dante
 
 import (
+	"fmt"
 	. "gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
 	"gitee.com/yuanxuezhe/dante/module"
+	"gitee.com/yuanxuezhe/dante/public"
+	logs "log"
 	"os"
 	"os/signal"
 	"strings"
@@ -14,6 +17,17 @@ func AddMod(tag string, newmodule func() module.Module) {
 }
 
 func Run() {
+	defaultLogPath := fmt.Sprintf("%s\\%s", public.ApplicationRoot, Conf.Log["LogPath"].(string))
+	fmt.Println(defaultLogPath)
+	// 定义日志配置
+	if Conf.Log["LogLevel"].(string) != "" {
+		logger, err := log.New(Conf.Log["LogLevel"].(string), defaultLogPath, logs.Ldate|logs.Lmicroseconds, Conf.Log["Console"].(bool))
+		if err != nil {
+			panic(err)
+		}
+		log.Export(logger)
+		defer logger.Close()
+	}
 
 	log.Release("Dante %v starting up", version)
 	// 按配置注册模块
