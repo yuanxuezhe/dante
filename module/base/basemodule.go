@@ -247,7 +247,6 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 	m.Unlock()
 	//var err error
 	for {
-		fmt.Println("LLLLLLLLLLLLLL:", m.ModuleType, len(m.Conns))
 		buff, err := conn.ReadMsg()
 		if err != nil {
 			panic(err)
