@@ -18,10 +18,10 @@ func AddMod(tag string, newmodule func() module.Module) {
 
 func Run() {
 	defaultLogPath := fmt.Sprintf("%s\\%s", public.ApplicationRoot, Conf.Log["LogPath"].(string))
-	fmt.Println(defaultLogPath)
+	//fmt.Println(defaultLogPath)
 	// 定义日志配置
 	if Conf.Log["LogLevel"].(string) != "" {
-		logger, err := log.New(Conf.Log["LogLevel"].(string), defaultLogPath, logs.Ldate|logs.Lmicroseconds, Conf.Log["Console"].(bool))
+		logger, err := log.New(Conf.Log["LogLevel"].(string), Conf.Log["PrintLevel"].(string), defaultLogPath, logs.Ldate|logs.Lmicroseconds, Conf.Log["Console"].(bool))
 		if err != nil {
 			panic(err)
 		}

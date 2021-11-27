@@ -8,8 +8,8 @@ import (
 	. "gitee.com/yuanxuezhe/dante/msg"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
-	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
+	web "gitee.com/yuanxuezhe/ynet/websocket"
 	"time"
 )
 

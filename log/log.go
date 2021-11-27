@@ -27,24 +27,40 @@ const (
 
 type Logger struct {
 	level      int
+	printlevel int
 	baseLogger *log.Logger
 	baseFile   *os.File
 }
 
-func New(strLevel string, pathname string, flag int, console bool) (*Logger, error) {
-	// level
-	var level int
-	switch strings.ToLower(strLevel) {
+func New(logLevel string, printLevel string, pathname string, flag int, console bool) (*Logger, error) {
+	// logLevel
+	var ilogLevel int
+	switch strings.ToLower(logLevel) {
 	case "debug":
-		level = debugLevel
+		ilogLevel = debugLevel
 	case "release":
-		level = releaseLevel
+		ilogLevel = releaseLevel
 	case "error":
-		level = errorLevel
+		ilogLevel = errorLevel
 	case "fatal":
-		level = fatalLevel
+		ilogLevel = fatalLevel
 	default:
-		return nil, errors.New("unknown level: " + strLevel)
+		return nil, errors.New("unknown level: " + logLevel)
+	}
+
+	// printLevel
+	var iprintLevel int
+	switch strings.ToLower(printLevel) {
+	case "debug":
+		iprintLevel = debugLevel
+	case "release":
+		iprintLevel = releaseLevel
+	case "error":
+		iprintLevel = errorLevel
+	case "fatal":
+		iprintLevel = fatalLevel
+	default:
+		return nil, errors.New("unknown level: " + logLevel)
 	}
 
 	// logger
@@ -96,7 +112,8 @@ func New(strLevel string, pathname string, flag int, console bool) (*Logger, err
 
 	// new
 	logger := new(Logger)
-	logger.level = level
+	logger.level = ilogLevel
+	logger.printlevel = iprintLevel
 	logger.baseLogger = baseLogger
 	logger.baseFile = baseFile
 
@@ -114,15 +131,22 @@ func (logger *Logger) Close() {
 }
 
 func (logger *Logger) doPrintf(level int, printLevel string, format string, a ...interface{}) {
-	if level < logger.level {
-		return
-	}
 	if logger.baseLogger == nil {
 		panic("logger closed")
 	}
 
+	if level < logger.level && level < logger.printlevel {
+		return
+	}
+
 	format = printLevel + format
-	_ = logger.baseLogger.Output(3, fmt.Sprintf(format, a...))
+	if level >= logger.level {
+		logger.baseLogger.Output(3, fmt.Sprintf(format, a...))
+	}
+
+	if level >= logger.printlevel {
+		fmt.Sprintf(format, a...)
+	}
 
 	if level == fatalLevel {
 		os.Exit(1)
@@ -145,7 +169,7 @@ func (logger *Logger) Fatal(format string, a ...interface{}) {
 	logger.doPrintf(fatalLevel, printFatalLevel, format, a...)
 }
 
-var gLogger, _ = New("debug", "", log.LstdFlags, true)
+var gLogger, _ = New("debug", "debug", "", log.LstdFlags, true)
 
 // It's dangerous to call the method on logging
 func Export(logger *Logger) {
