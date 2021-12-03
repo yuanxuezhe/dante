@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	. "gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
 	. "gitee.com/yuanxuezhe/dante/msg"
@@ -11,9 +15,6 @@ import (
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
 	web "gitee.com/yuanxuezhe/ynet/websocket"
-	"strings"
-	"sync"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -247,6 +248,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 	m.Unlock()
 	//var err error
 	for {
+		fmt.Println("LLLLLLLLLLLLLL:", m.ModuleType, len(m.Conns))
 		buff, err := conn.ReadMsg()
 		if err != nil {
 			panic(err)

@@ -2,6 +2,8 @@ package register
 
 import (
 	"encoding/json"
+	"time"
+
 	"gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
 	"gitee.com/yuanxuezhe/dante/module/base"
@@ -10,7 +12,6 @@ import (
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
 	web "gitee.com/yuanxuezhe/ynet/websocket"
-	"time"
 )
 
 type BaseRegister struct {
