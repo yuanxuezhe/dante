@@ -4,16 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	. "gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
 	. "gitee.com/yuanxuezhe/dante/msg"
 	"gitee.com/yuanxuezhe/ynet"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
-	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
-	"strings"
-	"sync"
-	"time"
+	web "gitee.com/yuanxuezhe/ynet/websocket"
 
 	_ "github.com/go-sql-driver/mysql"
 )

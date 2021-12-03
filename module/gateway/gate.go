@@ -2,13 +2,15 @@ package gateway
 
 import (
 	"encoding/json"
+
 	"gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
 	"gitee.com/yuanxuezhe/dante/module/base"
 	. "gitee.com/yuanxuezhe/dante/msg"
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
-	web "gitee.com/yuanxuezhe/ynet/http"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
+	web "gitee.com/yuanxuezhe/ynet/websocket"
+
 	//"dante/core/network"
 	"fmt"
 	"time"
