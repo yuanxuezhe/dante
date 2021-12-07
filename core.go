@@ -1,6 +1,7 @@
 package dante
 
 import (
+	"danteserver/server/pool"
 	"fmt"
 	. "gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
@@ -28,6 +29,9 @@ func Run() {
 		log.Export(logger)
 		defer logger.Close()
 	}
+
+	// 初始化连接池
+	pool.InitConnpoll()
 
 	log.Release("Dante %v starting up", version)
 	// 按配置注册模块

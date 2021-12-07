@@ -1,7 +1,6 @@
-package mq
+package pool
+
 import (
-	"fmt"
-	"github.com/streadway/amqp"
 	"time"
 )
 
@@ -32,7 +31,7 @@ type idleConn struct {
 }
 
 // 批量生成连接，并把连接放到连接池channel里面
-func (this *ConnPool)InitPool() error{
+func (this *ConnPool) InitPool() error {
 	this.idle = make(chan interface{}, this.MaxActive)
 	for x := 0; x < this.MaxActive; x++ {
 		//conn, err := this.Dial()
@@ -43,13 +42,13 @@ func (this *ConnPool)InitPool() error{
 			return err
 		}
 		//this.idle <-conn
-		this.idle <-idleConn{t: nowFunc(), c: db}
+		this.idle <- idleConn{t: nowFunc(), c: db}
 	}
 	return nil
 }
 
 // 从连接池里取出连接
-func (this *ConnPool)Get() interface{} {
+func (this *ConnPool) Get() interface{} {
 	// 如果空闲连接为空，初始化连接池
 	if this.idle == nil {
 		this.InitPool()
@@ -73,26 +72,7 @@ func (this *ConnPool)Get() interface{} {
 }
 
 // 回收连接到连接池
-func (this *ConnPool)Release(conn interface{}) {
+func (this *ConnPool) Release(conn interface{}) {
 	//this.idle <-conn
-	this.idle <-idleConn{t: nowFunc(), c: conn}
-}
-
-func RabbitPool() *ConnPool {
-	//qUser := beego.AppConfig.String("RABBITMQ::user") //RABBITMQ::user
-	//qPass := beego.AppConfig.String("RABBITMQ::pass") //RABBITMQ::pass
-	//qHost := beego.AppConfig.String("RABBITMQ::host") //RABBITMQ::host
-	//qPort, _ := beego.AppConfig.Int("RABBITMQ::port") //RABBITMQ::port
-	rabbitmq := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", "admin", "admin", "vpn.evdata.top", 45672, "dante")
-	fmt.Printf("%s\n",rabbitmq)
-	poolNum := 10
-	fmt.Printf("初始化 Mysql 连接池，连接数：%d \n", poolNum)
-	cp := &ConnPool{
-		MaxActive: poolNum,
-		Dial: func() (interface{}, error) {
-			conn, err := amqp.Dial(rabbitmq)
-			return conn, err
-		},
-	}
-	return cp
+	this.idle <- idleConn{t: nowFunc(), c: conn}
 }
