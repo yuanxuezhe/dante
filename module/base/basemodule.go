@@ -129,8 +129,8 @@ func (m *Basemodule) OnDestroy() {
 // 设置模块参数
 func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	m.ModuleId = moduleSettings.Id
-	m.ReadChan = make(chan []byte, 20)
-	m.WriteChan = make(chan []byte, 20)
+	m.ReadChan = make(chan []byte, 10000)
+	m.WriteChan = make(chan []byte, 10000)
 	m.Conns = make(map[string]commconn.CommConn, 500)
 	m.Modules = make(map[string]ModuleInfo, 50)
 	m.ModlueConns = make(map[string]commconn.CommConn, 100)

@@ -38,7 +38,7 @@ func init() {
 		ApplicationDir, _ = filepath.Split(ApplicationPath)
 	}
 
-	defaultConfPath := fmt.Sprintf("%s\\conf\\server.json", ApplicationDir)
+	defaultConfPath := fmt.Sprintf("%s/conf/server.json", ApplicationDir)
 	log.Release(defaultConfPath)
 	LoadConfig(defaultConfPath)
 }

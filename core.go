@@ -18,7 +18,7 @@ func AddMod(tag string, newmodule func() module.Module) {
 }
 
 func Run() {
-	defaultLogPath := fmt.Sprintf("%s\\%s", public.ApplicationRoot, Conf.Log["LogPath"].(string))
+	defaultLogPath := fmt.Sprintf("%s/%s", public.ApplicationRoot, Conf.Log["LogPath"].(string))
 	//fmt.Println(defaultLogPath)
 	// 定义日志配置
 	if Conf.Log["LogLevel"].(string) != "" {

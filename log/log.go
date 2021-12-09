@@ -12,6 +12,13 @@ import (
 
 // levels
 const (
+	LEVEL_DEBUG   = 0
+	LEVEL_RELEASE = 1
+	LEVEL_ERROR   = 2
+	LEVEL_FATAL   = 3
+)
+
+const (
 	debugLevel   = 0
 	releaseLevel = 1
 	errorLevel   = 2
@@ -30,6 +37,46 @@ type Logger struct {
 	printlevel int
 	baseLogger *log.Logger
 	baseFile   *os.File
+}
+
+type LogStruct struct {
+  Level int
+  Fomart string
+  Args []interface{}
+}
+
+var (
+	LogChann chan *LogStruct	
+)
+var gLogger, _ = New("debug", "debug", "", log.LstdFlags, true)
+
+func init() {
+  LogChann = make(chan *LogStruct, 10000)
+  go logWrite()
+}
+
+func logWrite() {
+  for {
+    select {
+      case ri := <-LogChann:
+		switch ri.Level {
+		case LEVEL_DEBUG:
+			gLogger.doPrintf(debugLevel, printDebugLevel, ri.Fomart, ri.Args...)
+		case LEVEL_RELEASE:
+			gLogger.doPrintf(releaseLevel, printReleaseLevel, ri.Fomart, ri.Args...)
+		case LEVEL_ERROR:
+			gLogger.doPrintf(errorLevel, printErrorLevel, ri.Fomart, ri.Args...)
+		case LEVEL_FATAL:
+			gLogger.doPrintf(fatalLevel, printFatalLevel, ri.Fomart, ri.Args...)
+		default:
+			gLogger.doPrintf(debugLevel, printDebugLevel, "[unknown level]" + ri.Fomart, ri.Args...)
+		}
+      }
+  }
+}
+
+func LogPrint(logStruct *LogStruct) {
+	LogChann <- logStruct
 }
 
 func New(logLevel string, printLevel string, pathname string, flag int, console bool) (*Logger, error) {
@@ -79,7 +126,7 @@ func New(logLevel string, printLevel string, pathname string, flag int, console 
 			}
 		}
 
-		pathname = fmt.Sprintf("%s\\%d%02d%02d",
+		pathname = fmt.Sprintf("%s/%d%02d%02d",
 			pathname,
 			now.Year(),
 			now.Month(),
@@ -145,7 +192,7 @@ func (logger *Logger) doPrintf(level int, printLevel string, format string, a ..
 	}
 
 	if level >= logger.printlevel {
-		fmt.Sprintf(format, a...)
+		fmt.Printf(format, a...)
 	}
 
 	if level == fatalLevel {
@@ -168,8 +215,6 @@ func (logger *Logger) Error(format string, a ...interface{}) {
 func (logger *Logger) Fatal(format string, a ...interface{}) {
 	logger.doPrintf(fatalLevel, printFatalLevel, format, a...)
 }
-
-var gLogger, _ = New("debug", "debug", "", log.LstdFlags, true)
 
 // It's dangerous to call the method on logging
 func Export(logger *Logger) {
