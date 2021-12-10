@@ -53,12 +53,12 @@ func (m *BaseRegister) Run(closeSig chan bool) {
 
 	if tcpServer != nil {
 		tcpServer.Start()
-		log.Release("Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
+		log.LogPrint(log.LEVEL_RELEASE, "Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
 	}
 
 	if wsServer != nil {
 		wsServer.Start()
-		log.Release("Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
+		log.LogPrint(log.LEVEL_RELEASE, "Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
 	}
 
 	// 关闭系统
@@ -110,7 +110,7 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 	}
 
 	if m.ModuleType != "Gateway" {
-		log.Release("Params:%s", buff)
+		log.LogPrint(log.LEVEL_RELEASE, "Params:%s", buff)
 	}
 
 	// 解析收到的消息
@@ -146,18 +146,21 @@ func (m *BaseRegister) RegisterBeats() error {
 
 	var conn commconn.CommConn
 
-	for k, value := range m.Modules {
-		if c, ok := m.registerConns[value.TcpAddr]; ok {
-			conn = c
-		} else {
-			conn = ynet.NewTcpclient(value.TcpAddr)
-			m.registerConns[value.TcpAddr] = conn
-		}
+	for _, values := range m.Modules {
+		for k, value := range values {
+			if c, ok := m.registerConns[value.TcpAddr]; ok {
+				conn = c
+			} else {
+				conn = ynet.NewTcpclient(value.TcpAddr)
+				m.registerConns[value.TcpAddr] = conn
+			}
 
-		err = conn.WriteMsg(PackageMsg("RegisterList", string(jsons)))
+			err = conn.WriteMsg(PackageMsg("RegisterList", string(jsons)))
 
-		if err != nil {
-			delete(m.Modules, k)
+			if err != nil {
+				//delete(values, k)
+				values = append(values[:k], values[k+1:]...)
+			}
 		}
 	}
 

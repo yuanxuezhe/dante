@@ -19,11 +19,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gitee.com/yuanxuezhe/dante/log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"gitee.com/yuanxuezhe/dante/log"
 )
 
 var (
@@ -39,7 +40,7 @@ func init() {
 	}
 
 	defaultConfPath := fmt.Sprintf("%s/conf/server.json", ApplicationDir)
-	log.Release(defaultConfPath)
+	log.LogPrint(log.LEVEL_RELEASE, defaultConfPath)
 	LoadConfig(defaultConfPath)
 }
 

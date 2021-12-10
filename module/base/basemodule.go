@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -31,6 +32,7 @@ type ModuleInfo struct {
 // 模块基类
 type Basemodule struct {
 	sync.RWMutex
+	rWMutex       sync.RWMutex
 	ModuleId      string // 模块名称
 	ModuleType    string // 模块类型
 	ModuleVersion string // 模块版本号
@@ -42,7 +44,7 @@ type Basemodule struct {
 	DoWork       func([]byte) ([]byte, error) // 回调函数
 	ReadChan     chan []byte                  // 读入队列
 	WriteChan    chan []byte                  // 写出队列
-	Modules      map[string]ModuleInfo        // 记录注册信息
+	Modules      map[string][]ModuleInfo      // 记录注册信息
 	Conns        map[string]commconn.CommConn // 客户端连接
 	ModlueConns  map[string]commconn.CommConn // 记录模块连接
 }
@@ -101,12 +103,12 @@ func (m *Basemodule) Run(closeSig chan bool) {
 
 	if tcpServer != nil {
 		tcpServer.Start()
-		log.Release("Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
+		log.LogPrint(log.LEVEL_RELEASE, "Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
 	}
 
 	if wsServer != nil {
 		wsServer.Start()
-		log.Release("Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
+		log.LogPrint(log.LEVEL_RELEASE, "Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
 	}
 
 	// 关闭系统
@@ -132,7 +134,7 @@ func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
 	m.ReadChan = make(chan []byte, 10000)
 	m.WriteChan = make(chan []byte, 10000)
 	m.Conns = make(map[string]commconn.CommConn, 500)
-	m.Modules = make(map[string]ModuleInfo, 50)
+	m.Modules = make(map[string][]ModuleInfo, 50)
 	m.ModlueConns = make(map[string]commconn.CommConn, 100)
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
@@ -212,7 +214,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 			conn.Close()
 			continue
 		} else {
-			log.Release("[%-10s]%s", m.ModuleId, "首次注册应答  "+conn.LocalAddr().String()+"==>", conn.RemoteAddr().String()+"    "+string(buff))
+			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]%s", m.ModuleId, "首次注册应答  "+conn.LocalAddr().String()+"==>", conn.RemoteAddr().String()+"    "+string(buff))
 			conn.Close()
 			break
 		}
@@ -254,7 +256,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		}
 
 		if m.ModuleType != "Gateway" {
-			log.Release("[%-10s]Params:%s", m.ModuleId, buff)
+			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]Params:%s", m.ModuleId, buff)
 		}
 
 		// 解析收到的消息
@@ -267,7 +269,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 		// Register list refresh
 		if msg.Id == "RegisterList" {
 			json.Unmarshal([]byte(msg.Body), &m.Modules)
-			log.Release("[%-10s]%s", m.ModuleId, "Register list refresh successful!")
+			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]%s", m.ModuleId, "Register list refresh successful!")
 			continue
 		}
 
@@ -331,21 +333,24 @@ func (m *Basemodule) DealWriteChan() {
 
 func (m *Basemodule) GetModuleConn(moduletype string) (commconn.CommConn, error) {
 	var ip string
-	for _, value := range m.Modules {
-		if value.ModuleType == moduletype {
-			ip = value.TcpAddr
-			break
-		}
+	if vcModuleinfo, ok := m.Modules[moduletype]; ok {
+		rand.Seed(time.Now().Unix())
+		ip = vcModuleinfo[rand.Intn(len(vcModuleinfo))].TcpAddr
 	}
 
 	if len(ip) == 0 {
 		return nil, errors.New("Undefined module:" + moduletype)
 	}
+	m.rWMutex.RLock()
 	if conn, ok := m.ModlueConns[ip]; ok {
+		m.rWMutex.RUnlock()
 		return conn, nil
 	} else {
+		m.rWMutex.RUnlock()
 		conns := ynet.NewTcpclient(ip)
+		m.rWMutex.Lock()
 		m.ModlueConns[ip] = conns
+		m.rWMutex.Unlock()
 		return m.ModlueConns[ip], nil
 	}
 }

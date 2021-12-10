@@ -98,12 +98,12 @@ func (m *Gate) Run(closeSig chan bool) {
 
 	if tcpServer != nil {
 		tcpServer.Start()
-		log.Release("Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
+		log.LogPrint(log.LEVEL_RELEASE, "Module[%-10s|%-10s] start tcpServer successful:[%s]", m.GetId(), m.Version(), m.TcpAddr)
 	}
 
 	if wsServer != nil {
 		wsServer.Start()
-		log.Release("Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
+		log.LogPrint(log.LEVEL_RELEASE, "Module[%-10s|%-10s] start wsServer successful:[%s]", m.GetId(), m.Version(), m.WsAddr)
 	}
 
 	// 关闭系统
@@ -210,7 +210,7 @@ func (m *Gate) DealWriteChan() {
 			}
 
 			if conn, ok := m.Conns[res.Ip]; ok {
-				log.Debug("[%-10s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
+				log.LogPrint(log.LEVEL_DEBUG, "[%-10s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
 				conn.WriteMsg(res.Results)
 			}
 		}

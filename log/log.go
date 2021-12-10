@@ -26,10 +26,10 @@ const (
 )
 
 const (
-	printDebugLevel   = "[debug  ] "
-	printReleaseLevel = "[release] "
-	printErrorLevel   = "[error  ] "
-	printFatalLevel   = "[fatal  ] "
+	printDebugLevel   = "[debug] "
+	printReleaseLevel = "[relea] "
+	printErrorLevel   = "[error] "
+	printFatalLevel   = "[fatal] "
 )
 
 type Logger struct {
@@ -40,43 +40,45 @@ type Logger struct {
 }
 
 type LogStruct struct {
-  Level int
-  Fomart string
-  Args []interface{}
+	Level int
+	Msg   string
 }
 
 var (
-	LogChann chan *LogStruct	
+	LogChann chan *LogStruct
 )
 var gLogger, _ = New("debug", "debug", "", log.LstdFlags, true)
 
 func init() {
-  LogChann = make(chan *LogStruct, 10000)
-  go logWrite()
+	LogChann = make(chan *LogStruct, 10000)
+	go logWrite()
 }
 
 func logWrite() {
-  for {
-    select {
-      case ri := <-LogChann:
-		switch ri.Level {
-		case LEVEL_DEBUG:
-			gLogger.doPrintf(debugLevel, printDebugLevel, ri.Fomart, ri.Args...)
-		case LEVEL_RELEASE:
-			gLogger.doPrintf(releaseLevel, printReleaseLevel, ri.Fomart, ri.Args...)
-		case LEVEL_ERROR:
-			gLogger.doPrintf(errorLevel, printErrorLevel, ri.Fomart, ri.Args...)
-		case LEVEL_FATAL:
-			gLogger.doPrintf(fatalLevel, printFatalLevel, ri.Fomart, ri.Args...)
-		default:
-			gLogger.doPrintf(debugLevel, printDebugLevel, "[unknown level]" + ri.Fomart, ri.Args...)
+	for {
+		select {
+		case ri := <-LogChann:
+			switch ri.Level {
+			case LEVEL_DEBUG:
+				gLogger.doPrintf(debugLevel, printDebugLevel, ri.Msg)
+			case LEVEL_RELEASE:
+				gLogger.doPrintf(releaseLevel, printReleaseLevel, ri.Msg)
+			case LEVEL_ERROR:
+				gLogger.doPrintf(errorLevel, printErrorLevel, ri.Msg)
+			case LEVEL_FATAL:
+				gLogger.doPrintf(fatalLevel, printFatalLevel, ri.Msg)
+			default:
+				gLogger.doPrintf(debugLevel, printDebugLevel, "[unknown level]"+ri.Msg)
+			}
 		}
-      }
-  }
+	}
 }
 
-func LogPrint(logStruct *LogStruct) {
-	LogChann <- logStruct
+func LogPrint(Level int, Fomart string, args ...interface{}) {
+	LogChann <- &LogStruct{
+		LEVEL_ERROR,
+		fmt.Sprintf(Fomart+"\n", args...),
+	}
 }
 
 func New(logLevel string, printLevel string, pathname string, flag int, console bool) (*Logger, error) {
@@ -138,7 +140,6 @@ func New(logLevel string, printLevel string, pathname string, flag int, console 
 			now.Second())
 
 		_, err = os.Stat(pathname)
-		fmt.Println(pathname)
 		if os.IsNotExist(err) {
 			// 创建文件夹
 			err := os.Mkdir(pathname, os.ModePerm)
@@ -200,43 +201,11 @@ func (logger *Logger) doPrintf(level int, printLevel string, format string, a ..
 	}
 }
 
-func (logger *Logger) Debug(format string, a ...interface{}) {
-	logger.doPrintf(debugLevel, printDebugLevel, format, a...)
-}
-
-func (logger *Logger) Release(format string, a ...interface{}) {
-	logger.doPrintf(releaseLevel, printReleaseLevel, format, a...)
-}
-
-func (logger *Logger) Error(format string, a ...interface{}) {
-	logger.doPrintf(errorLevel, printErrorLevel, format, a...)
-}
-
-func (logger *Logger) Fatal(format string, a ...interface{}) {
-	logger.doPrintf(fatalLevel, printFatalLevel, format, a...)
-}
-
 // It's dangerous to call the method on logging
 func Export(logger *Logger) {
 	if logger != nil {
 		gLogger = logger
 	}
-}
-
-func Debug(format string, a ...interface{}) {
-	gLogger.doPrintf(debugLevel, printDebugLevel, format, a...)
-}
-
-func Release(format string, a ...interface{}) {
-	gLogger.doPrintf(releaseLevel, printReleaseLevel, format, a...)
-}
-
-func Error(format string, a ...interface{}) {
-	gLogger.doPrintf(errorLevel, printErrorLevel, format, a...)
-}
-
-func Fatal(format string, a ...interface{}) {
-	gLogger.doPrintf(fatalLevel, printFatalLevel, format, a...)
 }
 
 func Close() {

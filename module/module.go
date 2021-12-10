@@ -2,9 +2,10 @@ package module
 
 import (
 	"fmt"
+	"sync"
+
 	. "gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
-	"sync"
 )
 
 type Module interface {
@@ -41,11 +42,11 @@ func AddModule(tag string, newModule func() Module) {
 // 注册模块到系统
 func Register(mod string) {
 	if mpmods[mod] == nil {
-		log.Fatal("模块[%s]不存在", mod)
+		log.LogPrint(log.LEVEL_FATAL, "模块[%s]不存在", mod)
 		return
 	}
 	if Conf.Module[mod] == nil {
-		log.Fatal("模块[%s]配置信息不存在", mod)
+		log.LogPrint(log.LEVEL_FATAL, "模块[%s]配置信息不存在", mod)
 		return
 	}
 

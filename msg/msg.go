@@ -2,6 +2,7 @@ package msg
 
 import (
 	"encoding/json"
+
 	"gitee.com/yuanxuezhe/dante/log"
 )
 
@@ -73,9 +74,9 @@ func ResultPackege(moduleType string, moduleId string, code int, msg string, dat
 	resbuff, _ := json.Marshal(result)
 
 	if result.Status == "ok" {
-		log.Release("[%-10s]Resule:%s", moduleId, string(resbuff))
+		log.LogPrint(log.LEVEL_RELEASE, "[%-10s]Resule:%s", moduleId, string(resbuff))
 	} else {
-		log.Error("[%-10s]Resule:%s", moduleId, string(resbuff))
+		log.LogPrint(log.LEVEL_ERROR, "[%-10s]Resule:%s", moduleId, string(resbuff))
 	}
 
 	return resbuff
