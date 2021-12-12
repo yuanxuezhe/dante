@@ -14,7 +14,7 @@ type Module interface {
 	GetType() string //module type
 	OnInit()
 	OnDestroy()
-	SetPorperty(*ModuleSettings) error
+	SetProperty(*ModuleSettings) error
 	Run(closeSig chan bool)
 	Register(closeSig chan bool)
 }
@@ -53,7 +53,7 @@ func Register(mod string) {
 	for _, moduleSettings := range Conf.Module[mod] {
 		m := new(module)
 		Model := mpmods[mod]()
-		err := Model.SetPorperty(moduleSettings)
+		err := Model.SetProperty(moduleSettings)
 		if err != nil {
 			fmt.Println(err)
 			continue

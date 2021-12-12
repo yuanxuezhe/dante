@@ -2,8 +2,8 @@ package base
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"gitee.com/yuanxuezhe/dante/comm"
 	"math/rand"
 	"strings"
 	"sync"
@@ -16,23 +16,21 @@ import (
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
 	web "gitee.com/yuanxuezhe/ynet/websocket"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // 发送注册信息
 type ModuleInfo struct {
-	ModuleId      string // 模块名称
-	ModuleType    string // 模块类型
-	ModuleVersion string // 模块版本号
-	TcpAddr       string // 注册地址
+	ModuleId      string  `json:"moduleid"`// 模块名称
+	ModuleType    string  `json:"moduletype"`// 模块类型
+	ModuleVersion string  `json:"moduleversion"`// 模块版本号
+	TcpAddr       string  `json:"tcpaddr"`// 注册地址
 	//Status        int
 }
 
 // 模块基类
 type Basemodule struct {
 	sync.RWMutex
-	rWMutex       sync.RWMutex
 	ModuleId      string // 模块名称
 	ModuleType    string // 模块类型
 	ModuleVersion string // 模块版本号
@@ -44,9 +42,13 @@ type Basemodule struct {
 	DoWork       func([]byte) ([]byte, error) // 回调函数
 	ReadChan     chan []byte                  // 读入队列
 	WriteChan    chan []byte                  // 写出队列
-	Modules      map[string][]ModuleInfo      // 记录注册信息
-	Conns        map[string]commconn.CommConn // 客户端连接
-	ModlueConns  map[string]commconn.CommConn // 记录模块连接
+	//Modules      map[string][]ModuleInfo      // 记录注册信息
+	//Conns        map[string]commconn.CommConn // 客户端连接
+	//ModlueConns  map[string]commconn.CommConn // 记录模块连接
+	Modules      comm.DMap                      // 记录注册信息
+	Conns        comm.DMap                      // 客户端连接
+	ModlueConns  comm.DMap                      // 记录模块连接
+	mod   sync.Map
 }
 
 // 取模块ID
@@ -129,13 +131,20 @@ func (m *Basemodule) OnDestroy() {
 }
 
 // 设置模块参数
-func (m *Basemodule) SetPorperty(moduleSettings *ModuleSettings) (err error) {
+func (m *Basemodule) SetProperty(moduleSettings *ModuleSettings) (err error) {
 	m.ModuleId = moduleSettings.Id
 	m.ReadChan = make(chan []byte, 10000)
 	m.WriteChan = make(chan []byte, 10000)
-	m.Conns = make(map[string]commconn.CommConn, 500)
-	m.Modules = make(map[string][]ModuleInfo, 50)
-	m.ModlueConns = make(map[string]commconn.CommConn, 100)
+	//m.Modules = make(map[string][]ModuleInfo, 50)
+	//m.Conns = make(map[string]commconn.CommConn, 500)
+	//m.ModlueConns = make(map[string]commconn.CommConn, 100)
+	m.Modules.SetCapacity(50)
+	m.Conns.SetCapacity(500)
+	m.ModlueConns.SetCapacity(100)
+
+	m.Modules.SetDescribe(m.ModuleId + "  " + "m.Modules  ")
+	m.Conns.SetDescribe(m.ModuleId + "  " + "m.Conns  ")
+	m.ModlueConns.SetDescribe(m.ModuleId + "  " + "m.ModlueConns  ")
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -214,7 +223,7 @@ func (m *Basemodule) Register(closeSig chan bool) {
 			conn.Close()
 			continue
 		} else {
-			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]%s", m.ModuleId, "首次注册应答  "+conn.LocalAddr().String()+"==>", conn.RemoteAddr().String()+"    "+string(buff))
+			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]首次注册应答:%s ==> %s  %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(),string(buff))
 			conn.Close()
 			break
 		}
@@ -231,7 +240,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			if strings.Contains(err.(error).Error(), "An existing connection was forcibly closed by the remote host") {
 				conn.WriteMsg(ResultPackege(m.ModuleType, m.ModuleId, 1, "connection was closed!["+conn.LocalAddr().String()+"==》"+conn.RemoteAddr().String()+"]", nil))
 				m.Lock()
-				delete(m.Conns, conn.RemoteAddr().String())
+				m.Conns.Del(conn.RemoteAddr().String())
 				m.Unlock()
 				return
 			}
@@ -245,9 +254,8 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 
 	RemoteAddr := conn.RemoteAddr().String()
 	// 保存 TCP
-	m.Lock()
-	m.Conns[RemoteAddr] = conn
-	m.Unlock()
+	m.Conns.Set(RemoteAddr, conn)
+
 	//var err error
 	for {
 		buff, err := conn.ReadMsg()
@@ -255,7 +263,7 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 			panic(err)
 		}
 
-		if m.ModuleType != "Gateway" {
+		if m.ModuleType == "Gateway" {
 			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]Params:%s", m.ModuleId, buff)
 		}
 
@@ -268,13 +276,19 @@ func (m *Basemodule) Handler(conn commconn.CommConn) {
 
 		// Register list refresh
 		if msg.Id == "RegisterList" {
-			json.Unmarshal([]byte(msg.Body), &m.Modules)
+			var ModuleInfos map[string][]ModuleInfo
+			err = json.Unmarshal([]byte(msg.Body), &ModuleInfos)
+			if err != nil {
+				panic(err)
+			}
+
+			for k,v := range ModuleInfos {
+				m.Modules.Set(k,v)
+			}
 			log.LogPrint(log.LEVEL_RELEASE, "[%-10s]%s", m.ModuleId, "Register list refresh successful!")
 			continue
 		}
-
 		msg.Addr = RemoteAddr
-
 		buff, err = json.Marshal(msg)
 		if err != nil {
 			panic(err)
@@ -324,33 +338,35 @@ func (m *Basemodule) DealWriteChan() {
 				continue
 			}
 
-			if conn, ok := m.Conns[res.Ip]; ok {
-				conn.WriteMsg(res.Results)
+			conn, err := m.Conns.Get(res.Ip)
+			if err != nil {
+				continue
 			}
+
+			conn.(commconn.CommConn).WriteMsg(res.Results)
 		}
 	}
 }
 
 func (m *Basemodule) GetModuleConn(moduletype string) (commconn.CommConn, error) {
 	var ip string
-	if vcModuleinfo, ok := m.Modules[moduletype]; ok {
-		rand.Seed(time.Now().Unix())
-		ip = vcModuleinfo[rand.Intn(len(vcModuleinfo))].TcpAddr
+	vcModuleInfoNil, err := m.Modules.Get(moduletype)
+	if err != nil {
+		return nil, fmt.Errorf("Undefined Module:%s, ERR:%s", moduletype, err.Error())
 	}
+	rand.Seed(time.Now().Unix())
+	vcModuleInfo := vcModuleInfoNil.([]ModuleInfo)
+	ip = vcModuleInfo[rand.Intn(len(vcModuleInfo))].TcpAddr
 
 	if len(ip) == 0 {
-		return nil, errors.New("Undefined module:" + moduletype)
+		return nil, fmt.Errorf("Module:%s IP is error!", moduletype)
 	}
-	m.rWMutex.RLock()
-	if conn, ok := m.ModlueConns[ip]; ok {
-		m.rWMutex.RUnlock()
-		return conn, nil
-	} else {
-		m.rWMutex.RUnlock()
-		conns := ynet.NewTcpclient(ip)
-		m.rWMutex.Lock()
-		m.ModlueConns[ip] = conns
-		m.rWMutex.Unlock()
-		return m.ModlueConns[ip], nil
+
+	conn, err := m.ModlueConns.Get(ip)
+	if err != nil {
+		conn = ynet.NewTcpclient(ip)
+		m.ModlueConns.Set(ip, conn)
 	}
+
+	return conn.(commconn.CommConn), nil
 }

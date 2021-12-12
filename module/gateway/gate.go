@@ -29,13 +29,17 @@ type Gate struct {
 	KeyFile  string
 }
 
-func (m *Gate) SetPorperty(moduleSettings *conf.ModuleSettings) (err error) {
+func (m *Gate) SetProperty(moduleSettings *conf.ModuleSettings) (err error) {
 	m.ModuleId = moduleSettings.Id
-
-	m.Conns = make(map[string]commconn.CommConn, 1000000)
 	m.ReadChan = make(chan []byte, 1000000)
 	m.WriteChan = make(chan []byte, 1000000)
-	m.ModlueConns = make(map[string]commconn.CommConn, 100)
+	m.Modules.SetCapacity(100)
+	m.Conns.SetCapacity(1000000)
+	m.ModlueConns.SetCapacity(100)
+
+	m.Modules.SetDescribe(m.ModuleId + "  " + "m.Modules  ")
+	m.Conns.SetDescribe(m.ModuleId + "  " + "m.Conns  ")
+	m.ModlueConns.SetDescribe(m.ModuleId + "  " + "m.ModlueConns  ")
 
 	if moduleSettings.Settings["TCPAddr"] != nil {
 		if value, ok := moduleSettings.Settings["TCPAddr"].(string); ok {
@@ -118,58 +122,6 @@ func (m *Gate) Run(closeSig chan bool) {
 	}
 }
 
-//// TCP连接回调函数
-//func (m *Gate) Handler(conn commconn.CommConn) {
-//	// 将客户端远程地址作为连接的key，保存TCP连接，供返回值调用
-//	RemoteAddr := conn.RemoteAddr().String()
-//	m.Conns[RemoteAddr] = conn
-//	defer func() { //必须要先声明defer，否则不能捕获到panic异常
-//		if err := recover(); err != nil {
-//			if err.(error).Error() == "EOF" {
-//				return
-//			}
-//			if strings.Contains(err.(error).Error(), "use of closed network connection") {
-//				return
-//			}
-//			m.WriteChan <- ResultIpPackege(RemoteAddr, ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
-//		}
-//		conn.Close()
-//	}()
-//
-//	for {
-//		buff, err := conn.ReadMsg()
-//		if err != nil {
-//			panic(err)
-//		}
-//		// 解析收到的消息
-//		msg := Msg{}
-//		json.Unmarshal(buff, &msg)
-//		if err != nil {
-//			panic(err)
-//		}
-//
-//		msg.Addr = RemoteAddr
-//
-//		buff, err = json.Marshal(msg)
-//		if err != nil {
-//			panic(err)
-//		}
-//
-//		// 若为注册消息，直接忽略
-//		if msg.Id == "Register" {
-//			conn.WriteMsg(ResultPackege(msg.Id, 0, "注册成功！", nil))
-//			//continue
-//		}
-//		if msg.Id == "RegisterList" {
-//			json.Unmarshal([]byte(msg.Body), &m.Modules)
-//			fmt.Println(m.ModuleId," Register info:",m.Modules)
-//			continue
-//		}
-//
-//		m.ReadChan <- buff
-//	}
-//}
-
 func (m *Gate) DealReadChan() {
 	for {
 		select {
@@ -209,10 +161,14 @@ func (m *Gate) DealWriteChan() {
 				continue
 			}
 
-			if conn, ok := m.Conns[res.Ip]; ok {
-				log.LogPrint(log.LEVEL_DEBUG, "[%-10s][%s ==> %s] %s", m.ModuleId, conn.LocalAddr().String(), conn.RemoteAddr().String(), string(res.Results))
-				conn.WriteMsg(res.Results)
+			conn, err := m.Conns.Get(res.Ip)
+			if err != nil {
+				continue
 			}
+
+			log.LogPrint(log.LEVEL_DEBUG, "[%-10s][%s ==> %s] %s", m.ModuleId, conn.(commconn.CommConn).LocalAddr().String(), conn.(commconn.CommConn).RemoteAddr().String(), string(res.Results))
+
+			conn.(commconn.CommConn).WriteMsg(res.Results)
 		}
 	}
 }

@@ -2,8 +2,7 @@ package register
 
 import (
 	"encoding/json"
-	"time"
-
+	"gitee.com/yuanxuezhe/dante/comm"
 	"gitee.com/yuanxuezhe/dante/conf"
 	"gitee.com/yuanxuezhe/dante/log"
 	"gitee.com/yuanxuezhe/dante/module/base"
@@ -12,11 +11,16 @@ import (
 	commconn "gitee.com/yuanxuezhe/ynet/Conn"
 	tcp "gitee.com/yuanxuezhe/ynet/tcp"
 	web "gitee.com/yuanxuezhe/ynet/websocket"
+	//"reflect"
+	"sync"
+	"time"
 )
 
 type BaseRegister struct {
 	base.Basemodule
-	registerConns map[string]commconn.CommConn
+	registerConnsRWMutex sync.RWMutex
+	//registerConns map[string]commconn.CommConn
+	registerConns comm.DMap
 }
 
 // 运行模块
@@ -73,17 +77,19 @@ func (m *BaseRegister) Run(closeSig chan bool) {
 	}
 }
 
-// 设置模块参数
-func (m *BaseRegister) SetPorperty(moduleSettings *conf.ModuleSettings) (err error) {
-	m.registerConns = make(map[string]commconn.CommConn, 50)
-	err = m.Basemodule.SetPorperty(moduleSettings)
+// SetProperty 设置模块参数
+func (m *BaseRegister) SetProperty(moduleSettings *conf.ModuleSettings) (err error) {
+	//m.registerCons = make(map[string]common.CommConn, 50)
+	m.registerConns.SetCapacity(50)
+	m.registerConns.SetDescribe(m.ModuleId + "  " + "m.registerConns  ")
+	err = m.Basemodule.SetProperty(moduleSettings)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// TCP连接回调函数
+// Handler TCP连接回调函数
 func (m *BaseRegister) Handler(conn commconn.CommConn) {
 	defer func() { //必须要先声明defer，否则不能捕获到panic异常
 		//if err := recover(); err != nil {
@@ -91,15 +97,15 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 		//		return
 		//	}
 		//	if strings.Contains(err.(error).Error(), "An existing connection was forcibly closed by the remote host") {
-		//		conn.WriteMsg(ResultPackege(m.ModuleType, 1, "connection was closed!["+conn.LocalAddr().String()+"==》"+conn.RemoteAddr().String()+"]", nil))
+		//		conn.WriteMsg(ResultPackage(m.ModuleType, 1, "connection was closed!["+conn.LocalAddr().String()+"==》"+conn.RemoteAddr().String()+"]", nil))
 		//		return
 		//	}
 		//	if strings.Contains(err.(error).Error(), "use of closed network connection") {
 		//		return
 		//	}
-		//	conn.WriteMsg(ResultPackege(m.ModuleType, 1, err.(error).Error(), nil))
+		//	conn.WriteMsg(ResultPackage(m.ModuleType, 1, err.(error).Error(), nil))
 		//}
-		_ = conn.Close()
+		conn.Close()
 	}()
 
 	//var err error
@@ -110,9 +116,8 @@ func (m *BaseRegister) Handler(conn commconn.CommConn) {
 	}
 
 	if m.ModuleType != "Gateway" {
-		log.LogPrint(log.LEVEL_RELEASE, "Params:%s", buff)
+		log.LogPrint(log.LEVEL_RELEASE, "[%-10s]Params:%s", m.ModuleId, buff)
 	}
-
 	// 解析收到的消息
 	msg := Msg{}
 	err = json.Unmarshal(buff, &msg)
@@ -139,30 +144,30 @@ func (m *BaseRegister) CircleRegisterBeats() {
 }
 
 func (m *BaseRegister) RegisterBeats() error {
-	jsons, err := json.Marshal(m.Modules) //转换成JSON返回的是byte[]
+	jsons, err := m.Modules.GetJsonFromMap()
 	if err != nil {
 		return err
 	}
 
-	var conn commconn.CommConn
+	m.Modules.Range(func(key string, values interface{}) bool {
+		var moduleInfos = values.([]base.ModuleInfo)
 
-	for _, values := range m.Modules {
-		for k, value := range values {
-			if c, ok := m.registerConns[value.TcpAddr]; ok {
-				conn = c
-			} else {
+		for k, value := range values.([]base.ModuleInfo) {
+			conn, err := m.registerConns.Get(value.TcpAddr)
+			if err != nil {
 				conn = ynet.NewTcpclient(value.TcpAddr)
-				m.registerConns[value.TcpAddr] = conn
+				m.registerConns.Set(value.TcpAddr, conn)
 			}
 
-			err = conn.WriteMsg(PackageMsg("RegisterList", string(jsons)))
+			err = conn.(commconn.CommConn).WriteMsg(PackageMsg("RegisterList", string(jsons)))
 
 			if err != nil {
-				//delete(values, k)
-				values = append(values[:k], values[k+1:]...)
+				values = append(moduleInfos[:k], moduleInfos[k+1:]...)
 			}
 		}
-	}
+		//m.Modules.Set(key, moduleInfos)
+		return true
+	})
 
 	return nil
 }
